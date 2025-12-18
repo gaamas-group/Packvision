@@ -1,7 +1,9 @@
 import React from 'react';
 
 const ScannerRecordingPage = () => {
-  return <h1>Packager App Working</h1>;
+  return <div>
+    <span>Packager Station</span>
+  </div>;
 };
 
 export default ScannerRecordingPage;
