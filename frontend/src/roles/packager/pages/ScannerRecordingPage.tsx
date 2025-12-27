@@ -47,13 +47,62 @@ const ScannerRecordingPage = () => {
       console.log('Recording stopped');
       console.log('Video Blob:', videoBlob);
 
-      // TODO: upload to backend / S3
-      // uploadVideo(videoBlob);
+      // Upload to backend / S3
+      uploadVideo(videoBlob);
     };
 
     mediaRecorderRef.current.stop(); // 👈 stops recording
     setIsRecording(false);
   };
+  /* New upload function with no database integration as requested */
+  const uploadVideo = async (blob: Blob) => {
+    try {
+      console.log('Starting upload process...');
+      const filename = `recording-${Date.now()}.webm`;
+
+      // 1. Get presigned URL
+      const response = await fetch(
+        'http://localhost:8000/api/v1/videos/upload-url',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            filename,
+            contentType: 'video/webm',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to get upload URL');
+      }
+
+      const { uploadUrl, key } = await response.json();
+      console.log('Got upload URL:', uploadUrl);
+
+      // 2. Upload to S3/MinIO
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: blob,
+        headers: {
+          'Content-Type': 'video/webm',
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload to storage');
+      }
+
+      console.log('Upload successful! Key:', key);
+      alert('Upload successful!');
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Upload failed check console');
+    }
+  };
+
   const downloadVideo = () => {
     const blob = new Blob(recordedChunksRef.current, {
       type: 'video/webm',
@@ -361,7 +410,10 @@ const ScannerRecordingPage = () => {
           {/* Controls */}
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button
-              onClick={() => setIsRecording(true)}
+              onClick={() => {
+                setIsRecording(true);
+                startRecording();
+              }}
               style={{
                 flex: 1,
                 padding: '1rem',
@@ -380,7 +432,10 @@ const ScannerRecordingPage = () => {
               START
             </button>
             <button
-              onClick={() => setIsRecording(false)}
+              onClick={() => {
+                setIsRecording(false);
+                stopRecording();
+              }}
               style={{
                 flex: 1,
                 padding: '1rem',
