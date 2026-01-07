@@ -7,7 +7,7 @@ const router = express.Router();
  * POST /api/v1/auth/login
  * Authenticate user and return JWT token
  */
-router.post("/auth/login", async (req, res) => {
+router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 

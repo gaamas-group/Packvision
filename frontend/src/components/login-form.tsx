@@ -27,7 +27,6 @@ export function LoginForm({
       } else if (response.role === 'packager') {
 
       }
-      debugger;
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An error occurred during login"
