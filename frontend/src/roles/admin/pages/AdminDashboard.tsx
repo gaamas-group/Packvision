@@ -3,8 +3,8 @@ import { DataTable } from '@/components/data-table';
 import { SectionCards } from '@/components/section-cards';
 import SimpleSidebar from '../components/SimpleSidebar';
 import { Menu, LogOut } from 'lucide-react';
-import { useAuth } from '@/auth/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/auth/ProtectedRoute';
 import {
   DropdownMenu,
   DropdownMenuContent,
