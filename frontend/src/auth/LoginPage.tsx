@@ -1,9 +1,26 @@
+import { useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { GalleryVerticalEnd } from "lucide-react"
 
 import { LoginForm } from "@/components/login-form"
+import { useAuth } from "@/auth/AuthContext"
 import loginImage from "@/assets/img.jpg"
 
 export default function LoginPage() {
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Redirect if already authenticated
+    if (isAuthenticated && user) {
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (user.role === 'packager') {
+        navigate('/packager/scan');
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">

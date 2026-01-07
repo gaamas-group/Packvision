@@ -1,30 +1,19 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
-export const useAuth = () => {
-  // Hardcoded role for scaffolding
-  const user = { role: 'admin', name: 'Test User' };
-  
-  const login = async (username, password) => {
-    console.log("Login stub", username);
-    return true;
-  };
+interface ProtectedRouteProps {
+  allowedRoles?: string[];
+}
 
-  const logout = () => {
-    console.log("Logout stub");
-  };
-
-  return { user, login, logout, isAuthenticated: !!user };
-};
-
-const ProtectedRoute = ({ allowedRoles }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     return <div>Unauthorized</div>;
   }
 

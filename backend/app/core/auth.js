@@ -38,6 +38,7 @@ export const verifyToken = (token) => {
 };
 
 export const authenticateUser = async (username, password) => {
+  debugger;
   try {
     const result = await query(
       "SELECT id, username, password_hash, role, tenant_id FROM users WHERE username = $1",
@@ -50,7 +51,6 @@ export const authenticateUser = async (username, password) => {
 
     const user = result.rows[0];
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    debugger;
 
     if (!isPasswordValid) {
       throw new Error("Invalid credentials");

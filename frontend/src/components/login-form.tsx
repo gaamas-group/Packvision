@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/api/login";
+import { useAuth } from "@/auth/AuthContext";
 
 
 export function LoginForm({
@@ -14,6 +16,8 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const { login: setAuth } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,10 +26,18 @@ export function LoginForm({
 
     try {
       const response = await login(email, password);
+      
+      // Save credentials to session
+      setAuth(response.access_token, response.user);
+      
+      // Redirect based on role
       if (response.role === 'admin') {
-
+        navigate('/admin/dashboard');
       } else if (response.role === 'packager') {
-
+        navigate('/packager/scan');
+      } else {
+        // Default redirect if role is unknown
+        navigate('/');
       }
     } catch (err) {
       setError(

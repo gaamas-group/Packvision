@@ -9,21 +9,16 @@ export const login = async (username: string, password: string) => {
     body: JSON.stringify({ username, password }),
   });
 
-  //   if (!response.ok) {
-  //     const error = await response.json().catch(() => ({ error: "Login failed" }));
-  //     throw new Error(error.error || "Invalid credentials");
-  //   }
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Login failed" }));
+    throw new Error(error.error || "Invalid credentials");
+  }
 
   const data = await response.json();
 
   if (data.access_token === undefined) {
     throw new Error("User does not exist");
   }
-
-  //   // Store token in localStorage for authorization
-  //   if (data.access_token) {
-  //     localStorage.setItem("access_token", data.access_token);
-  //   }
 
   return {
     access_token: data.access_token,
