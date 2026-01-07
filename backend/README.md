@@ -56,6 +56,17 @@ This is the Node.js/Express backend for the Packager System. It provides the API
 
 3.  **Set up environment variables** (create a `.env` file in the backend directory):
     ```bash
+    # Database Configuration (Supabase - Recommended)
+    DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@[PROJECT-REF].supabase.co:5432/postgres?sslmode=require
+    
+    # OR for local PostgreSQL:
+    # DB_HOST=localhost
+    # DB_PORT=5432
+    # DB_NAME=packvision
+    # DB_USER=postgres
+    # DB_PASSWORD=postgres
+    # DB_SSL=false
+
     # AWS Configuration
     AWS_REGION=us-east-1
     AWS_ACCESS_KEY_ID=your-access-key-id
@@ -68,7 +79,15 @@ This is the Node.js/Express backend for the Packager System. It provides the API
 
     # Frontend URL (for CORS)
     FRONTEND_URL=http://localhost:5173
+
+    # JWT Configuration
+    JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+    JWT_EXPIRES_IN=24h
     ```
+
+    **Note**: Get your Supabase connection string from: Supabase Dashboard → Settings → Database → Connection string (URI tab)
+    
+    See `SETUP_DATABASE.md` for detailed database setup instructions.
 
 4.  **Run the server**:
     ```bash
