@@ -1,11 +1,11 @@
 # **Packvision — Intelligent Packaging Monitoring System**
 
-*Enterprise-grade Role-Based Camera Monitoring & Packaging Analytics Platform*
+_Enterprise-grade Role-Based Camera Monitoring & Packaging Analytics Platform_
 
 Packvision is an end-to-end, AI-ready, packaging-line monitoring system designed for industrial environments.
 It provides real-time camera streaming, packager activity monitoring, recording workflows, and administrative dashboards for system oversight.
 
-This monorepo includes the full stack: **Python FastAPI backend**, **React dashboard**, and **Docker-based infrastructure**.
+This monorepo includes the full stack: **Node.js (Express) backend**, **React (TypeScript) dashboard**, and **Docker-based infrastructure**.
 
 ---
 
@@ -14,30 +14,26 @@ This monorepo includes the full stack: **Python FastAPI backend**, **React dashb
 ```
 Packvision/
 │
-├── backend/               # FastAPI backend - camera control, APIs, authentication
+├── backend/               # Node.js (Express) backend - camera control, APIs, authentication
 │   ├── app/
-│   │   ├── api/           # Route handlers
-│   │   ├── core/          # Config, logging, utilities
-│   │   ├── services/      # Camera service, recording manager, workflows
-│   │   ├── models/        # Pydantic models (& ORM if added)
-│   │   ├── db/            # Database session, migrations
-│   │   ├── security/      # JWT & role-based access
-│   │   └── main.py        # Application entry point
-│   └── requirements.txt
+│   │   ├── api/           # Route handlers (v1)
+│   │   ├── services/      # S3 storage service, recording logic
+│   │   └── utils/         # Helper functions
+│   ├── server.js          # Application entry point
+│   └── package.json       # Node.js dependencies
 │
-├── frontend/              # React (Vite) - Role based UI for Admin & Packager
+├── frontend/              # React (Vite + TypeScript) - Role based UI for Admin & Packager
 │   ├── src/
-│   │   ├── components/    # Reusable UI elements
+│   │   ├── components/    # Reusable UI elements (Shadcn/UI)
 │   │   ├── pages/         # Screens for different roles
 │   │   ├── hooks/         # Custom React hooks
-│   │   ├── context/       # Auth + User Role Context
+│   │   ├── auth/          # Authentication logic
 │   │   └── api/           # Axios API wrappers
 │   └── package.json
 │
-├── infra/                 # Infrastructure: Docker, Docker Compose, CI/CD, IaC
+├── infra/                 # Infrastructure: Docker, Docker Compose
 │   ├── docker/
-│   ├── docker-compose.yml
-│   └── terraform/         # If cloud infra automation is included
+│   └── docker-compose.yml
 │
 └── README.md              # Project documentation
 ```
@@ -48,89 +44,68 @@ Packvision/
 
 ### **1. User Authentication & Roles**
 
-* Users log in through the React app.
-* FastAPI issues JWT tokens.
-* Tokens include assigned roles:
+- Users log in through the React app.
+- Node.js backend issues JWT tokens.
+- Tokens include assigned roles:
   **admin**, **packager**, **supervisor**, etc.
-* UI and API permissions change dynamically based on role.
+- UI and API permissions change dynamically based on role.
 
-### **2. Camera Management (Python Backend)**
+### **2. Recording & Storage Workflow**
 
-* Admin configures available cameras (IP, USB, RTSP).
-* FastAPI camera service uses:
+- Backend handles recording orchestration and storage management.
+- **S3-Compatible Storage**: Uses AWS SDK for interaction with S3 or MinIO.
+- **Presigned URLs**:
+  - Generates secure `PutObject` presigned URLs for client-side uploads.
+  - Generates secure `GetObject` presigned URLs for video playback.
+- Endpoints:
+  - `POST /api/v1/videos/upload-url`
+  - `GET /api/v1/videos/download-url/:key`
 
-  * `OpenCV` for live frame grabbing
-  * Optional `aiortc` / `ffmpeg` integration for low-latency streaming
-* Endpoints:
-
-  * `/camera/start`
-  * `/camera/stop`
-  * `/camera/status`
-  * `/camera/record/start`
-  * `/camera/record/stop`
-
-### **3. Recording Workflow**
-
-* Backend handles all recording operations using Python:
-
-  * Save recordings to local or mounted volume
-  * Auto-create folders by date/user
-  * Async background tasks for long-running processes
-* React only *triggers* the action, it never handles video directly.
-
-### **4. Admin Dashboard**
+### **3. Admin Dashboard**
 
 (Admin Role)
 
-* View all packagers
-* Monitor live camera streams
-* View system logs
-* Create/update roles
-* Manage storage usage
-* Review production timelines
+- View all packagers and active sessions.
+- Monitor system logs and production timelines.
+- Manage storage usage and recording archives.
+- Create and update user roles.
 
-### **5. Packager Dashboard**
+### **4. Packager Dashboard**
 
 (Packager Role)
 
-* Start/stop packaging sessions
-* View their assigned cameras
-* Scan packaging codes (if implemented)
-* Upload incident photos/reports
-* View daily performance
+- Start/stop packaging sessions.
+- Scan packaging codes and link them to recordings.
+- Upload incident photos/reports directly to cloud storage.
+- View daily performance metrics.
 
 ---
 
 # **🧠 Tech Stack**
 
-## **Backend — FastAPI (Python)**
+## **Backend — Node.js (Express)**
 
-* **FastAPI** — High-performance API framework
-* **OpenCV** — Camera handling & recording
-* **uvicorn** — ASGI server
-* **SQLAlchemy / PostgreSQL** (if enabled)
-* **Redis** for caching or job queues (optional)
-* **JWT Auth** (PyJWT)
-* **Pydantic v2** — Request/response validation
+- **Express** — Fast, unopinionated web framework.
+- **AWS SDK (@aws-sdk/client-s3)** — S3-compatible storage integration.
+- **JWT Auth (jsonwebtoken)** — Secure token-based authentication.
+- **bcryptjs** — Password hashing and security.
+- **dotenv** — Environment variable management.
 
-## **Frontend — React + Vite**
+## **Frontend — React + Vite (TypeScript)**
 
-* React 18
-* Vite for fast builds
-* Zustand / Context API for auth state
-* Axios for API communication
-* TailwindCSS / Material-UI (optional)
-* Role-based routing
+- **React 19** — Latest React features.
+- **TypeScript** — Strong typing for better maintainability.
+- **Tailwind CSS** — Utility-first styling with modern configuration.
+- **Zustand** — Lightweight state management.
+- **TanStack Table** — Powerful data tables for admin dashboards.
+- **Radix UI / Shadcn** — Premium, accessible UI components.
+- **Lucide React** — Modern icon set.
 
 ## **Infrastructure**
 
-* Docker + Docker Compose
-* Optional:
-
-  * Nginx reverse proxy
-  * Terraform for cloud deployment
-  * Traefik for SSL automation
-  * GitHub Actions for CI/CD
+- **Docker + Docker Compose**
+- **Nginx** (planned for production reverse proxy)
+- **Prometheus + Grafana** (planned for monitoring)
 
 ---
 
@@ -145,14 +120,13 @@ cd Packvision
 
 ---
 
-## **2. Backend Setup (Manual)**
+## **2. Backend Setup**
 
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+npm install
+# Create a .env file with your AWS/MinIO credentials
+npm run dev
 ```
 
 ---
@@ -167,34 +141,16 @@ npm run dev
 
 ---
 
-## **4. Docker (Full Stack)**
-
-```bash
-cd infra
-docker-compose up --build
-```
-
-Services:
-
-* `backend` → FastAPI
-* `frontend` → React app served on nginx (or dev server)
-* `db` (optional) → PostgreSQL
-* `redis` (optional)
-
----
-
 # **🔐 Security & Role-Based Access**
 
-The backend enforces access control:
+The backend enforces access control via JWT middleware:
 
-| Role           | Access                                        |
-| -------------- | --------------------------------------------- |
-| **Admin**      | Full system access, camera control, user mgmt |
-| **Packager**   | Limited dashboard, recording control          |
-| **Supervisor** | Monitoring & reporting                        |
-| **Auditor**    | View-only                                     |
-
-React receives the user role from JWT and renders the right UI.
+| Role           | Access                                      |
+| -------------- | ------------------------------------------- |
+| **Admin**      | Full system access, storage mgmt, user mgmt |
+| **Packager**   | Session control, recording uploads          |
+| **Supervisor** | Monitoring & reporting                      |
+| **Auditor**    | View-only access to logs and analytics      |
 
 ---
 
@@ -202,21 +158,10 @@ React receives the user role from JWT and renders the right UI.
 
 ### **Recommended Architecture**
 
-* **Backend** on Docker or Kubernetes
-* **Frontend** (React) hosted on:
-
-  * S3 + CloudFront
-  * Netlify / Vercel
-  * or Nginx container
-* **DB** on managed PostgreSQL (RDS, Cloud SQL)
-* **File storage** on:
-
-  * AWS S3
-  * or local NAS storage
-* **Logs & Monitoring**:
-
-  * Prometheus + Grafana
-  * Loki for logs
+- **Backend**: Node.js containers orchestrated by Kubernetes or Docker Swarm.
+- **Frontend**: Static hosting (S3 + CloudFront, Vercel, or Nginx).
+- **Storage**: MinIO for on-premise or AWS S3 for cloud-native deployments.
+- **Database**: PostgreSQL for persistent metadata (planned).
 
 ---
 
@@ -224,21 +169,18 @@ React receives the user role from JWT and renders the right UI.
 
 ### **Backend**
 
-* Use type hints everywhere
-* Follow FastAPI’s router/module structure
-* Isolate camera functions inside `services/camera_service.py`
-* Avoid blocking tasks — use `asyncio` or background workers
+- Use ES Modules (`import/export`).
+- Keep services (S3, Auth) isolated from route handlers.
+- Implement robust error handling middleware.
 
 ### **Frontend**
 
-* Feature-based folder structure
-* Reusable components
-* API wrappers in `src/api/`
-* Centralized role-based routing
+- Standardize on TypeScript for all new components.
+- Use Shadcn/UI for consistent design patterns.
+- Keep state centralized in Zustand or Context where appropriate.
 
 ---
 
 # **📄 License**
 
 Proprietary — All rights reserved by GAAMAS Group.
-
