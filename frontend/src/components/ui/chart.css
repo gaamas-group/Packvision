@@ -1,0 +1,12 @@
+.chart-indicator {
+  --color-bg: transparent;
+  --color-border: transparent;
+  background-color: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.chart-legend-indicator {
+  --legend-color: transparent;
+  background-color: var(--legend-color);
+}
+

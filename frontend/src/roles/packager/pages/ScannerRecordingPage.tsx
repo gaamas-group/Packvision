@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../../../auth/AuthContext';
 
 const ScannerRecordingPage = () => {
+  const { accessToken } = useAuth();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -54,7 +56,7 @@ const ScannerRecordingPage = () => {
     mediaRecorderRef.current.stop(); // 👈 stops recording
     setIsRecording(false);
   };
-  /* New upload function with no database integration as requested */
+  /* Updated upload function with database integration */
   const uploadVideo = async (blob: Blob) => {
     try {
       console.log('Starting upload process...');
@@ -67,6 +69,7 @@ const ScannerRecordingPage = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
             filename,
@@ -96,7 +99,33 @@ const ScannerRecordingPage = () => {
       }
 
       console.log('Upload successful! Key:', key);
-      alert('Upload successful!');
+
+      // 3. Notify backend to save to database
+      const saveResponse = await fetch(
+        'http://localhost:8000/api/v1/recordings',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            package_code: inputValue || 'PKG-UNKNOWN',
+            duration: Math.round(blob.size / (1024 * 512)), // Dummy duration calc if needed, or track it
+            file_size: blob.size,
+            object_key: key,
+            started_at: new Date(Date.now() - 10000).toISOString(), // Dummy start time
+            ended_at: new Date().toISOString(),
+          }),
+        }
+      );
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save recording metadata to database');
+      }
+
+      console.log('Successfully recorded in database');
+      alert('Recording saved successfully!');
     } catch (error) {
       console.error('Upload failed:', error);
       alert('Upload failed check console');

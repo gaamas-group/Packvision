@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { setAuth, clearAuth, RootState } from '../store';
 
 interface User {
   id: number;
@@ -30,9 +32,10 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useDispatch();
+  const { user, accessToken, isAuthenticated, isLoading } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   // Load auth state from sessionStorage on mount
   useEffect(() => {
@@ -41,8 +44,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     if (storedToken && storedUser) {
       try {
-        setAccessToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        const userData = JSON.parse(storedUser);
+        dispatch(setAuth({ user: userData, accessToken: storedToken }));
         // Also set in localStorage for API client
         localStorage.setItem('access_token', storedToken);
       } catch (error) {
@@ -50,14 +53,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         sessionStorage.removeItem('access_token');
         sessionStorage.removeItem('user');
         localStorage.removeItem('access_token');
+        dispatch(clearAuth());
       }
+    } else {
+      dispatch(clearAuth());
     }
-    setIsLoading(false);
-  }, []);
+  }, [dispatch]);
 
   const login = (token: string, userData: User) => {
-    setAccessToken(token);
-    setUser(userData);
+    dispatch(setAuth({ user: userData, accessToken: token }));
     // Store in sessionStorage for session persistence
     sessionStorage.setItem('access_token', token);
     sessionStorage.setItem('user', JSON.stringify(userData));
@@ -66,8 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    setAccessToken(null);
-    setUser(null);
+    dispatch(clearAuth());
     sessionStorage.removeItem('access_token');
     sessionStorage.removeItem('user');
     localStorage.removeItem('access_token');
@@ -76,7 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     user,
     accessToken,
-    isAuthenticated: !!user && !!accessToken,
+    isAuthenticated,
     login,
     logout,
   };
@@ -88,4 +91,3 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

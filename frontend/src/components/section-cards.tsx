@@ -8,20 +8,32 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-export function SectionCards() {
+export interface DashboardStats {
+  total_orders: number;
+  total_recordings: number;
+  total_returned: number;
+}
+
+export function SectionCards({ stats }: { stats?: DashboardStats }) {
+  const totalOrders = stats?.total_orders || 0;
+  const totalRecordings = stats?.total_recordings || 0;
+  const totalReturned = stats?.total_returned || 0;
+  const rtoRate =
+    totalOrders > 0 ? ((totalReturned / totalOrders) * 100).toFixed(1) : '0.0';
+
   return (
     <div className="grid grid-cols-1 gap-4 px-4 md:grid-cols-3 lg:px-6">
-      {/* Total Orders Packed (Month) */}
+      {/* Total Orders Packed */}
       <Card className="@container/card">
         <CardHeader className="relative">
-          <CardDescription>Total Orders Packed</CardDescription>
+          <CardDescription>Total Orders</CardDescription>
           <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-            1,234
+            {totalOrders.toLocaleString()}
           </CardTitle>
           <div className="absolute right-4 top-4">
             <Package className="h-5 w-5 text-muted-foreground" />
           </div>
-          <p className="text-xs text-muted-foreground mt-2">This month</p>
+          <p className="text-xs text-muted-foreground mt-2">Orders in system</p>
         </CardHeader>
       </Card>
 
@@ -30,7 +42,7 @@ export function SectionCards() {
         <CardHeader className="relative">
           <CardDescription>Videos Recorded</CardDescription>
           <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-            856
+            {totalRecordings.toLocaleString()}
           </CardTitle>
           <div className="absolute right-4 top-4">
             <Video className="h-5 w-5 text-muted-foreground" />
@@ -44,12 +56,12 @@ export function SectionCards() {
         <CardHeader className="relative">
           <CardDescription>Number of Returns (RTO)</CardDescription>
           <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-            23
+            {totalReturned.toLocaleString()}
           </CardTitle>
           <div className="absolute right-4 top-4">
             <Badge variant="outline" className="flex gap-1 rounded-lg text-xs">
               <TrendingDown className="size-3" />
-              2.1%
+              {rtoRate}%
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-2">RTO rate</p>

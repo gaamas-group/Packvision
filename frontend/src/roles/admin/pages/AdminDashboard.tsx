@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { DataTable } from '@/components/data-table';
 import { SectionCards } from '@/components/section-cards';
 import SimpleSidebar from '../components/SimpleSidebar';
 import { Menu, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/auth/AuthContext';
+import { setStats, setRecordings, RootState } from '@/store';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,12 +17,58 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-import data from './data.json';
-
 const AdminDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const dispatch = useDispatch();
+  const { stats, recordings } = useSelector((state: RootState) => state.admin);
+  const { user, logout, accessToken } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const headers = { Authorization: `Bearer ${accessToken}` };
+
+        // Fetch stats
+        const statsRes = await fetch(
+          'http://localhost:8000/api/v1/admin/stats',
+          {
+            headers,
+          }
+        );
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          dispatch(setStats(statsData));
+        }
+
+        // Fetch recordings
+        const recordingsRes = await fetch(
+          'http://localhost:8000/api/v1/admin/recordings',
+          { headers }
+        );
+        if (recordingsRes.ok) {
+          const recordingsData = await recordingsRes.json();
+          // Map backend recording data to match expected DataTable schema
+          const mappedRecordings = recordingsData.recordings.map((r: any) => ({
+            id: r.id,
+            header: r.package_code,
+            type: `By ${r.packager_name}`,
+            status: r.status === 'completed' ? 'Done' : r.status,
+            target: `${Math.round(r.duration_seconds)}s`,
+            limit: `${(r.file_size / (1024 * 1024)).toFixed(1)}MB`,
+            reviewer: new Date(r.created_at).toLocaleDateString(),
+          }));
+          dispatch(setRecordings(mappedRecordings));
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      }
+    };
+
+    if (accessToken) {
+      fetchDashboardData();
+    }
+  }, [accessToken, dispatch]);
 
   const handleLogout = () => {
     logout();
@@ -80,8 +128,8 @@ const AdminDashboard = () => {
 
         <main className="flex-1 p-4 md:p-6 lg:p-8">
           <div className="w-full space-y-6">
-            <SectionCards />
-            <DataTable data={data} />
+            <SectionCards stats={stats || undefined} />
+            <DataTable data={recordings} />
           </div>
         </main>
       </div>

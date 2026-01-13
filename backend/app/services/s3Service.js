@@ -22,11 +22,17 @@ const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'packvision-bucket';
  * @param {string} key - S3 object key (file path)
  * @param {string} contentType - MIME type of the file (e.g., 'video/mp4', 'image/jpeg')
  * @param {number} expiresIn - URL expiration time in seconds (default: 3600)
+ * @param {string} bucket - S3 bucket name (optional)
  * @returns {Promise<string>} Presigned URL
  */
-export async function generateUploadUrl(key, contentType, expiresIn = 3600) {
+export async function generateUploadUrl(
+  key,
+  contentType,
+  expiresIn = 3600,
+  bucket = BUCKET_NAME
+) {
   const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
+    Bucket: bucket,
     Key: key,
     ContentType: contentType,
   });
@@ -38,11 +44,16 @@ export async function generateUploadUrl(key, contentType, expiresIn = 3600) {
  * Generate a presigned URL for downloading a file from S3
  * @param {string} key - S3 object key (file path)
  * @param {number} expiresIn - URL expiration time in seconds (default: 3600)
+ * @param {string} bucket - S3 bucket name (optional)
  * @returns {Promise<string>} Presigned URL
  */
-export async function generateDownloadUrl(key, expiresIn = 3600) {
+export async function generateDownloadUrl(
+  key,
+  expiresIn = 3600,
+  bucket = BUCKET_NAME
+) {
   const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
+    Bucket: bucket,
     Key: key,
   });
 

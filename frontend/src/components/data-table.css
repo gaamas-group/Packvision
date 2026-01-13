@@ -1,0 +1,18 @@
+.draggable-row {
+  position: relative;
+  z-index: 0;
+  --transform: none;
+  --transition: none;
+  transform: var(--transform);
+  transition: var(--transition);
+}
+
+.draggable-row[data-dragging="true"] {
+  z-index: 10;
+  opacity: 0.8;
+}
+
+.draggable-row[data-state="selected"] {
+  /* Selected state styles if needed */
+}
+
