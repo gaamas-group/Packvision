@@ -77,7 +77,7 @@ router.post('/recordings', async (req, res) => {
         tenant_id,
         order_id,
         user_id,
-        bucket || process.env.AWS_S3_BUCKET_NAME || 'packvision-bucket',
+        bucket || process.env.AWS_S3_BUCKET_NAME || 'test-bucket',
         object_key,
         file_size,
         duration,

@@ -15,7 +15,7 @@ const s3Client = new S3Client({
   forcePathStyle: process.env.AWS_FORCE_PATH_STYLE === 'true', // Required for MinIO
 });
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'packvision-bucket';
+const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'test-bucket';
 
 /**
  * Generate a presigned URL for uploading a file to S3

@@ -3,19 +3,20 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import LoginPage from './auth/LoginPage';
 import ProtectedRoute from './auth/ProtectedRoute';
-import AdminDashboard from './roles/admin/pages/AdminDashboard';
 import ScannerRecordingPage from './roles/packager/pages/ScannerRecordingPage';
+import AdminDashboard from './roles/admin/pages/AdminDashboard';
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
+    <div className="dark">
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
           <Route path="/login" element={<LoginPage />} />
           
           {/* Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard/>} />
           </Route>
 
           {/* Packager Routes */}
@@ -27,6 +28,7 @@ function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+    </div>
   );
 }
 

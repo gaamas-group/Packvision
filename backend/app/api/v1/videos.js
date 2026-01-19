@@ -32,7 +32,7 @@ router.post('/videos/upload-url', async (req, res) => {
       uploadUrl,
       key,
       contentType,
-      bucket: process.env.AWS_S3_BUCKET_NAME || 'packvision-bucket',
+      bucket: process.env.AWS_S3_BUCKET_NAME || 'test-bucket',
       expiresIn: 3600,
     });
   } catch (error) {
@@ -52,7 +52,7 @@ router.get('/videos/download-url/:key', async (req, res) => {
 
     res.json({
       downloadUrl,
-      bucket: process.env.AWS_S3_BUCKET_NAME || 'packvision-bucket',
+      bucket: process.env.AWS_S3_BUCKET_NAME || 'test-bucket',
       expiresIn: 3600,
     });
   } catch (error) {

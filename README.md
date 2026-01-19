@@ -24,7 +24,7 @@ Packvision/
 │
 ├── frontend/              # React (Vite + TypeScript) - Role based UI for Admin & Packager
 │   ├── src/
-│   │   ├── components/    # Reusable UI elements (Shadcn/UI)
+│   │   ├── components/    # Reusable UI elements (Custom UI Kit)
 │   │   ├── pages/         # Screens for different roles
 │   │   ├── hooks/         # Custom React hooks
 │   │   ├── auth/          # Authentication logic
@@ -98,7 +98,7 @@ Packvision/
 - **Tailwind CSS** — Utility-first styling with modern configuration.
 - **Zustand** — Lightweight state management.
 - **TanStack Table** — Powerful data tables for admin dashboards.
-- **Radix UI / Shadcn** — Premium, accessible UI components.
+- **Custom UI Kit** — Custom-built, accessible UI components.
 - **Lucide React** — Modern icon set.
 
 ## **Infrastructure**
@@ -176,7 +176,7 @@ The backend enforces access control via JWT middleware:
 ### **Frontend**
 
 - Standardize on TypeScript for all new components.
-- Use Shadcn/UI for consistent design patterns.
+- Use the custom UI kit for consistent design patterns.
 - Keep state centralized in Zustand or Context where appropriate.
 
 ---
