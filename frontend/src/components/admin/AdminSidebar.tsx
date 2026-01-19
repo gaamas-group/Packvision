@@ -19,11 +19,6 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "User Management",
-    path: "/admin/users",
-    icon: Users,
-  },
-  {
     title: "Packager Management",
     path: "/admin/packagers",
     icon: Package,

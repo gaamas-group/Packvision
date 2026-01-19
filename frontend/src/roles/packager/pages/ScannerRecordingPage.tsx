@@ -1,14 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../../auth/AuthContext';
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { LogOut } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const ScannerRecordingPage = () => {
-  const { accessToken } = useAuth();
+  const { accessToken, user, logout } = useAuth();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  
+  const isAdmin = user?.role === 'admin';
 
   const startRecording = () => {
     console.log('Starting recording');
@@ -161,6 +166,11 @@ const ScannerRecordingPage = () => {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    window.location.href = "/login";
+  };
+
   useEffect(() => {
     async function startCamera() {
       try {
@@ -194,315 +204,162 @@ const ScannerRecordingPage = () => {
   }, []);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        backgroundColor: '#f5f5f5',
-        fontFamily: 'Inter, sans-serif',
-      }}
-    >
-      {/* Header */}
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '1rem 2rem',
-          backgroundColor: '#ffffff',
-          borderBottom: '1px solid #e0e0e0',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-        }}
-      >
-        <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#333' }}>
-          PACKVISION
-        </div>
-        <div
-          style={{
-            flex: 1,
-            textAlign: 'center',
-            fontSize: '1.5rem',
-            fontWeight: '600',
-            color: '#1a1a1a',
-          }}
-        >
-          Packaging Recorder
-        </div>
-        <div
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            backgroundColor: '#007bff',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 'bold',
-          }}
-        >
-          U
-        </div>
-      </header>
+    <div className="flex h-screen overflow-hidden bg-background text-foreground font-sans">
+      {/* Sidebar for Admin */}
+      {isAdmin && <AdminSidebar />}
 
-      {/* Main Content */}
-      <main
-        style={{
-          display: 'flex',
-          flex: 1,
-          padding: '2rem',
-          gap: '2rem',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Left Column: Camera Feed */}
-        <div
-          style={{
-            flex: 1,
-            backgroundColor: '#000',
-            borderRadius: '12px',
-            overflow: 'hidden',
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          }}
-        >
-          {/* Recording Indicator */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '20px',
-              left: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              zIndex: 10,
-            }}
-          >
-            <div
-              style={{
-                width: '12px',
-                height: '12px',
-                borderRadius: '50%',
-                backgroundColor: isRecording ? '#ff4d4d' : '#888',
-                boxShadow: isRecording ? '0 0 8px #ff4d4d' : 'none',
-                transition: 'background-color 0.3s ease',
-              }}
-            />
-            <span
-              style={{ color: 'white', fontSize: '0.9rem', fontWeight: '500' }}
-            >
-              {isRecording ? 'REC' : 'STANDBY'}
-            </span>
+      {/* Main Content Area */}
+      <div className="flex flex-1 flex-col overflow-hidden relative">
+        {/* Header */}
+        <header className="flex h-16 items-center justify-between border-b border-border bg-card px-8 shadow-sm">
+          <div className="font-bold text-xl tracking-tight text-foreground">
+            PACKVISION
           </div>
+          <div className="flex-1 text-center text-2xl font-semibold text-foreground/90 tracking-wide">
+            Packaging Recorder
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold shadow-md">
+                {user?.username?.[0]?.toUpperCase() || "U"}
+            </div>
+            {!isAdmin && (
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                </button>
+            )}
+          </div>
+        </header>
 
-          {/* Camera Overlay Corners */}
-          {[
-            {
-              top: '40px',
-              left: '40px',
-              borderTop: '4px solid rgba(255,255,255,0.7)',
-              borderLeft: '4px solid rgba(255,255,255,0.7)',
-            },
-            {
-              top: '40px',
-              right: '40px',
-              borderTop: '4px solid rgba(255,255,255,0.7)',
-              borderRight: '4px solid rgba(255,255,255,0.7)',
-            },
-            {
-              bottom: '40px',
-              left: '40px',
-              borderBottom: '4px solid rgba(255,255,255,0.7)',
-              borderLeft: '4px solid rgba(255,255,255,0.7)',
-            },
-            {
-              bottom: '40px',
-              right: '40px',
-              borderBottom: '4px solid rgba(255,255,255,0.7)',
-              borderRight: '4px solid rgba(255,255,255,0.7)',
-            },
-          ].map((style, i) => (
-            <div
-              key={i}
-              style={{
-                position: 'absolute',
-                width: '40px',
-                height: '40px',
-                ...style,
-                zIndex: 5,
-              }}
-            />
-          ))}
+        {/* Main Workspace */}
+        <main className="flex flex-1 p-8 gap-8 overflow-hidden bg-background">
+          {/* Left Column: Camera Feed */}
+          <div className="flex-1 bg-black rounded-xl overflow-hidden relative flex items-center justify-center shadow-lg border border-border">
+            {/* Recording Indicator */}
+            <div className="absolute top-5 left-5 flex items-center gap-3 z-10 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">
+              <div
+                className={cn(
+                  "w-3 h-3 rounded-full transition-all duration-300",
+                  isRecording 
+                    ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" 
+                    : "bg-zinc-500"
+                )}
+              />
+              <span className="text-white text-sm font-medium tracking-wide">
+                {isRecording ? 'REC' : 'STANDBY'}
+              </span>
+            </div>
 
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        </div>
+            {/* Camera Overlay Corners */}
+            <div className="absolute top-10 left-10 w-10 h-10 border-t-4 border-l-4 border-white/70 z-10 pointer-events-none rounded-tl-lg" />
+            <div className="absolute top-10 right-10 w-10 h-10 border-t-4 border-r-4 border-white/70 z-10 pointer-events-none rounded-tr-lg" />
+            <div className="absolute bottom-10 left-10 w-10 h-10 border-b-4 border-l-4 border-white/70 z-10 pointer-events-none rounded-bl-lg" />
+            <div className="absolute bottom-10 right-10 w-10 h-10 border-b-4 border-r-4 border-white/70 z-10 pointer-events-none rounded-br-lg" />
 
-        {/* Right Column: Controls & Metadata */}
-        <div
-          style={{
-            flex: '0 0 350px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
-          }}
-        >
-          {/* Input Box */}
-          <div
-            style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
-          >
-            <label
-              style={{ fontSize: '0.9rem', fontWeight: '500', color: '#555' }}
-            >
-              Package ID / Note
-            </label>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleInput}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter details..."
-              style={{
-                padding: '0.8rem',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                fontSize: '1rem',
-                outline: 'none',
-              }}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
             />
           </div>
 
-          {/* Metadata Card */}
-          <div
-            style={{
-              backgroundColor: 'white',
-              padding: '1.5rem',
-              borderRadius: '12px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-              border: '1px solid #eaeaea',
-            }}
-          >
-            <h3
-              style={{
-                margin: '0 0 1rem 0',
-                fontSize: '1.1rem',
-                color: '#333',
-              }}
-            >
-              Session Metadata
-            </h3>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.8rem',
-                fontSize: '0.9rem',
-                color: '#666',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Date:</span>
-                <span style={{ fontWeight: '500', color: '#333' }}>
-                  {new Date().toLocaleDateString()}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Time:</span>
-                <span style={{ fontWeight: '500', color: '#333' }}>
-                  {new Date().toLocaleTimeString()}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Camera:</span>
-                <span style={{ fontWeight: '500', color: '#333' }}>
-                  Logitech Brio
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Operator:</span>
-                <span style={{ fontWeight: '500', color: '#333' }}>
-                  User #42
-                </span>
+          {/* Right Column: Controls & Metadata */}
+          <div className="flex-none w-[350px] flex flex-col gap-6">
+            {/* Input Box */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Package ID / Note
+              </label>
+              <input
+                type="text"
+                value={inputValue}
+                onChange={handleInput}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter details..."
+                className="p-3 rounded-lg border border-input bg-background/50 hover:bg-background focus:bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none text-foreground placeholder:text-muted-foreground shadow-sm"
+              />
+            </div>
+
+            {/* Metadata Card */}
+            <div className="bg-card p-6 rounded-xl shadow-sm border border-border">
+              <h3 className="m-0 mb-4 text-lg font-semibold text-foreground">
+                Session Metadata
+              </h3>
+              <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+                <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                  <span>Date:</span>
+                  <span className="font-medium text-foreground">
+                    {new Date().toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                  <span>Time:</span>
+                  <span className="font-medium text-foreground">
+                    {new Date().toLocaleTimeString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                  <span>Camera:</span>
+                  <span className="font-medium text-foreground">
+                    Logitech Brio
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Operator:</span>
+                  <span className="font-medium text-foreground">
+                    {user?.username || "Unknown"}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Controls */}
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button
-              onClick={() => {
-                setIsRecording(true);
-                startRecording();
-              }}
-              style={{
-                flex: 1,
-                padding: '1rem',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                opacity: isRecording ? 0.7 : 1,
-              }}
-              disabled={isRecording}
-            >
-              START
-            </button>
-            <button
-              onClick={() => {
-                setIsRecording(false);
-                stopRecording();
-              }}
-              style={{
-                flex: 1,
-                padding: '1rem',
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                opacity: !isRecording ? 0.7 : 1,
-              }}
-              disabled={!isRecording}
-            >
-              STOP
-            </button>
-            <button
-              onClick={downloadVideo}
-              style={{
-                flex: 1,
-                padding: '1rem',
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '1rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                opacity: !isRecording ? 0.7 : 1,
-              }}
-            >
-              Download
+            {/* Controls */}
+            <div className="flex gap-4 mt-auto">
+              <button
+                onClick={() => {
+                  setIsRecording(true);
+                  startRecording();
+                }}
+                disabled={isRecording}
+                className={cn(
+                  "flex-1 py-4 px-6 rounded-lg font-semibold text-white shadow-md transition-all transform active:scale-95",
+                  isRecording 
+                    ? "bg-zinc-600 opacity-50 cursor-not-allowed" 
+                    : "bg-green-600 hover:bg-green-700 hover:shadow-lg"
+                )}
+              >
+                START
+              </button>
+              <button
+                onClick={() => {
+                  setIsRecording(false);
+                  stopRecording();
+                }}
+                disabled={!isRecording}
+                className={cn(
+                    "flex-1 py-4 px-6 rounded-lg font-semibold text-white shadow-md transition-all transform active:scale-95",
+                    !isRecording 
+                      ? "bg-zinc-600 opacity-50 cursor-not-allowed" 
+                      : "bg-red-600 hover:bg-red-700 hover:shadow-lg"
+                  )}
+              >
+                STOP
+              </button>
+            </div>
+             <button
+               onClick={downloadVideo}
+               className="w-full py-3 rounded-lg font-medium text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm transition-colors"
+             >
+               Download Recording
             </button>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
