@@ -144,7 +144,8 @@ export function DataTable<T extends Record<string, any>>({
     <div className="space-y-4">
       {/* Global Search */}
       {showGlobalSearch && (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Recent Recordings</h2>
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input

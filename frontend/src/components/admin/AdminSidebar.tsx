@@ -30,7 +30,7 @@ const menuItems = [
   },
   {
     title: "Package Scanner",
-    path: "/admin/scanner",
+    path: "/packager/scan",
     icon: Scan,
   },
 ]
@@ -38,7 +38,7 @@ const menuItems = [
 export function AdminSidebar() {
   const location = useLocation()
   const { logout, user } = useAuth()
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
 
   const handleLogout = () => {
     logout()

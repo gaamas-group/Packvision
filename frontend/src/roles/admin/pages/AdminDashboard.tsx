@@ -56,18 +56,6 @@ export default function AdminDashboard() {
             </div>
             <span className="font-semibold text-lg">PackVision Admin Panel</span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">Welcome, Administrator</span>
-            <button
-              onClick={() => {
-                // Logout logic would go here
-                window.location.href = "/login"
-              }}
-              className="px-4 py-2 text-sm font-medium bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
-            >
-              Logout
-            </button>
-          </div>
         </header>
 
         {/* Main Content Area */}

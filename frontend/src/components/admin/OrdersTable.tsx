@@ -106,7 +106,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
       accessorKey: "package_code",
       filterable: false,
       filterPlaceholder: "Search...",
-      className: "font-medium text-muted-foreground",
+      className: "font-medium text-foreground",
     },
     {
       id: "status",
@@ -119,6 +119,8 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
           {row.status.toUpperCase() || "Unknown"}
         </Badge>
       ),
+      className: "font-medium text-foreground",
+
     },
     // {
     //   id: "external_order_id",
@@ -133,6 +135,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
       accessorKey: "packager_name",
       filterable: false,
       filterPlaceholder: "Search...",
+      className: "font-medium text-foreground",
     },
     {
       id: "duration",
@@ -141,6 +144,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
       filterable: false,
       filterPlaceholder: "Search...",
       cell: (row) => formatDuration(row.duration_seconds),
+      className: "font-medium text-foreground",
     },
     {
       id: "file_size",
@@ -149,6 +153,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
       filterable: false,
       filterPlaceholder: "Search...",
       cell: (row) => formatFileSize(row.file_size),
+      className: "font-medium text-foreground",
     },
     {
       id: "created_at",
@@ -157,6 +162,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
       filterable: false,
       filterPlaceholder: "Search...",
       cell: (row) => formatDate(row.created_at),
+      className: "font-medium text-foreground",
     },
     {
       id: "download",
@@ -173,18 +179,18 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
             }}
             className="h-8"
           >
-            <Download className="h-4 w-4 mr-2" />
-            Download
+            <Download className="h-4 w-4 mr-2 text-foreground" />
+            <span className="text-foreground text-sm">Download</span>
           </Button>
         ) : (
           <span className="text-muted-foreground text-sm">N/A</span>
         ),
+        className: "font-medium text-foreground",
     },
   ]
 
   return (
     <div className="space-y-4 px-4 lg:px-6">
-      <h2 className="text-lg font-semibold text-foreground">Recent Recordings</h2>
       <DataTable
         data={orders}
         columns={columns}
