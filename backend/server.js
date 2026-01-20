@@ -5,6 +5,7 @@ import videosRouter from './app/api/v1/videos.js';
 import ordersRouter from './app/api/v1/orders.js';
 import recordingsRouter from './app/api/v1/recordings.js';
 import adminRouter from './app/api/v1/admin.js';
+import videoMultipartRoutes from './app/api/v1/videos.multipart.js';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -13,7 +14,7 @@ const PORT = process.env.PORT || 8000;
 app.use((req, res, next) => {
   res.header(
     'Access-Control-Allow-Origin',
-    process.env.FRONTEND_URL || 'http://localhost:5173'
+    process.env.FRONTEND_URL || 'http://localhost:5173',
   );
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -54,6 +55,7 @@ app.use('/api/v1', videosRouter);
 app.use('/api/v1', recordingsRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1', ordersRouter);
+app.use('/api/v1', videoMultipartRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

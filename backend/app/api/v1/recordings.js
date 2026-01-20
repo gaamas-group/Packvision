@@ -2,11 +2,13 @@ import express from 'express';
 import { query } from '../../db/connection.js';
 import { authenticate } from '../../core/auth.js';
 import { generateDownloadUrl } from '../../services/s3Service.js';
+import { validateTenant } from '../../middleware/tenantValidation.js';
 
 const router = express.Router();
 
 // All recording routes require authentication
 router.use(authenticate);
+router.use(validateTenant);
 
 /**
  * POST /api/v1/recordings
@@ -44,18 +46,18 @@ router.post('/recordings', async (req, res) => {
     let order_id;
     const orderResult = await query(
       'SELECT id FROM orders WHERE tenant_id = $1 AND package_code = $2',
-      [tenant_id, package_code]
+      [tenant_id, package_code],
     );
 
     if (orderResult.rows.length === 0) {
       // Auto-create order if it doesn't exist to prevent failure
       console.log(
-        `Order not found for package_code ${package_code}. Creating placeholder order with 'packed' status.`
+        `Order not found for package_code ${package_code}. Creating placeholder order with 'packed' status.`,
       );
       const newOrderResult = await query(
         `INSERT INTO orders (tenant_id, package_code, status, external_order_id)
          VALUES ($1, $2, $3, $4) RETURNING id`,
-        [tenant_id, package_code, 'packed', `EXT-${Date.now()}`]
+        [tenant_id, package_code, 'packed', `EXT-${Date.now()}`],
       );
       order_id = newOrderResult.rows[0].id;
     } else {
@@ -84,7 +86,7 @@ router.post('/recordings', async (req, res) => {
         started_at || new Date().toISOString(),
         ended_at || new Date().toISOString(),
         'completed',
-      ]
+      ],
     );
 
     res.status(201).json({
@@ -109,7 +111,7 @@ router.get('/recordings/:id/presigned-url', async (req, res) => {
     // 1. Get bucket and object_key from DB, ensuring tenant-scoped
     const result = await query(
       'SELECT bucket, object_key FROM recordings WHERE id = $1 AND tenant_id = $2',
-      [id, tenant_id]
+      [id, tenant_id],
     );
 
     if (result.rows.length === 0) {

@@ -11,8 +11,6 @@ const s3Client = new S3Client({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
   },
-  endpoint: process.env.AWS_ENDPOINT, // Required for MinIO
-  forcePathStyle: process.env.AWS_FORCE_PATH_STYLE === 'true', // Required for MinIO
 });
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'test-bucket';
@@ -29,7 +27,7 @@ export async function generateUploadUrl(
   key,
   contentType,
   expiresIn = 3600,
-  bucket = BUCKET_NAME
+  bucket = BUCKET_NAME,
 ) {
   const command = new PutObjectCommand({
     Bucket: bucket,
@@ -50,7 +48,7 @@ export async function generateUploadUrl(
 export async function generateDownloadUrl(
   key,
   expiresIn = 3600,
-  bucket = BUCKET_NAME
+  bucket = BUCKET_NAME,
 ) {
   const command = new GetObjectCommand({
     Bucket: bucket,
@@ -58,4 +56,16 @@ export async function generateDownloadUrl(
   });
 
   return await getSignedUrl(s3Client, command, { expiresIn });
+}
+
+/**
+ * Generate a standardized S3 key for recordings
+ * Format: {tenantId}/orders/{orderId}/recordings/{recordingId}.webm
+ * @param {string|number} tenantId
+ * @param {string|number} package_code
+ * @param {string|number} recordingId
+ * @returns {string} Formatted S3 key
+ */
+export function generateS3Key(tenantId, package_code, recordingId) {
+  return `${tenantId}/orders/${package_code}/recordings/${recordingId}.webm`;
 }

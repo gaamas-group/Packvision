@@ -2,12 +2,15 @@ import express from 'express';
 import {
   generateUploadUrl,
   generateDownloadUrl,
+  generateS3Key,
 } from '../../services/s3Service.js';
 import { authenticate } from '../../core/auth.js';
+import { validateTenant } from '../../middleware/tenantValidation.js';
 
 const router = express.Router();
 
 router.use(authenticate);
+router.use(validateTenant);
 
 /**
  * POST /api/v1/videos/upload-url
@@ -15,7 +18,8 @@ router.use(authenticate);
  */
 router.post('/videos/upload-url', async (req, res) => {
   try {
-    const { filename, contentType, folder = 'videos' } = req.body;
+    const { filename, contentType, package_code } = req.body;
+    const { tenant_id } = req.user;
 
     if (!filename) {
       return res.status(400).json({ error: 'Filename is required' });
@@ -25,12 +29,22 @@ router.post('/videos/upload-url', async (req, res) => {
       return res.status(400).json({ error: 'ContentType is required' });
     }
 
-    const key = `${folder}/${Date.now()}-${filename}`;
+    if (!package_code) {
+      return res.status(400).json({ error: 'package code is required' });
+    }
+
+    // Generate recordingId (or use one from frontend if provided, but better to generate or use timestamp)
+    const recordingId = `rec_${crypto.randomUUID()}`;
+
+    // Generate S3 key using the required structure
+    const key = generateS3Key(tenant_id, package_code, recordingId);
+
     const uploadUrl = await generateUploadUrl(key, contentType);
 
     res.json({
       uploadUrl,
       key,
+      recordingId,
       contentType,
       bucket: process.env.AWS_S3_BUCKET_NAME || 'test-bucket',
       expiresIn: 3600,
