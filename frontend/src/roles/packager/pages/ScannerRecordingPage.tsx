@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../../auth/AuthContext';
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { LogOut } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const ScannerRecordingPage = () => {
   const { accessToken, user, logout } = useAuth();
@@ -12,7 +12,11 @@ const ScannerRecordingPage = () => {
   const recordedChunksRef = useRef<Blob[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [inputValue, setInputValue] = useState('');
-  
+  const canStartRecording = inputValue.trim().length > 0;
+  const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB
+  const MULTIPART_THRESHOLD = 100 * 1024 * 1024; // 100 MB
+  const MAX_RETRIES = 3;
+
   const isAdmin = user?.role === 'admin';
 
   const startRecording = () => {
@@ -24,7 +28,7 @@ const ScannerRecordingPage = () => {
       mediaStreamRef.current as MediaStream,
       {
         mimeType: 'video/webm; codecs=vp8',
-      }
+      },
     );
 
     mediaRecorderRef.current = mediaRecorder;
@@ -61,79 +65,160 @@ const ScannerRecordingPage = () => {
     mediaRecorderRef.current.stop(); // 👈 stops recording
     setIsRecording(false);
   };
-  /* Updated upload function with database integration */
+
+  //common function to save metadata
+  const saveRecordingMetadata = async (blob: Blob, key: string) => {
+    const res = await fetch('http://localhost:8000/api/v1/recordings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        package_code: inputValue || 'PKG-UNKNOWN',
+        duration: Math.round(blob.size / (1024 * 512)),
+        file_size: blob.size,
+        object_key: key,
+        started_at: new Date(Date.now() - 10000).toISOString(),
+        ended_at: new Date().toISOString(),
+      }),
+    });
+
+    if (!res.ok) throw new Error('DB save failed');
+
+    alert('Recording saved successfully!');
+  };
+
+  //function to upload normal video
+  const uploadSingle = async (blob: Blob) => {
+    const response = await fetch(
+      'http://localhost:8000/api/v1/videos/upload-url',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          filename: `recording-${Date.now()}.webm`,
+          contentType: 'video/webm',
+          package_code: inputValue,
+        }),
+      },
+    );
+
+    const { uploadUrl, key } = await response.json();
+
+    await fetch(uploadUrl, {
+      method: 'PUT',
+      body: blob,
+      headers: { 'Content-Type': 'video/webm' },
+    });
+
+    await saveRecordingMetadata(blob, key);
+  };
+
+  //function to upload large video
+  const uploadMultipart = async (blob: Blob) => {
+    console.log('Using multipart upload');
+
+    // 1️⃣ INIT
+    const initRes = await fetch(
+      'http://localhost:8000/api/v1/videos/multipart/init',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          contentType: 'video/webm',
+          package_code: inputValue,
+        }),
+      },
+    ).then((r) => r.json());
+
+    const { uploadId, key } = initRes;
+
+    const totalParts = Math.ceil(blob.size / CHUNK_SIZE);
+    const uploadedParts: { PartNumber: number; ETag: string }[] = [];
+
+    // 2️⃣ UPLOAD PARTS
+    for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+      const start = (partNumber - 1) * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, blob.size);
+      const chunk = blob.slice(start, end);
+
+      let attempt = 0;
+
+      while (attempt < MAX_RETRIES) {
+        try {
+          // Get presigned URL
+          const { url } = await fetch(
+            'http://localhost:8000/api/v1/videos/multipart/part-url',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                key,
+                uploadId,
+                partNumber,
+              }),
+            },
+          ).then((r) => r.json());
+
+          const res = await fetch(url, {
+            method: 'PUT',
+            body: chunk,
+          });
+
+          if (!res.ok) throw new Error('Part upload failed');
+
+          const etag = res.headers.get('ETag')!;
+          uploadedParts.push({ PartNumber: partNumber, ETag: etag });
+
+          console.log(`Uploaded part ${partNumber}/${totalParts}`);
+          break;
+        } catch (err) {
+          attempt++;
+          if (attempt === MAX_RETRIES) throw err;
+        }
+      }
+    }
+
+    // 3️⃣ COMPLETE
+    await fetch('http://localhost:8000/api/v1/videos/multipart/complete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        key,
+        uploadId,
+        parts: uploadedParts.sort((a, b) => a.PartNumber - b.PartNumber),
+      }),
+    });
+
+    await saveRecordingMetadata(blob, key);
+  };
+
+  //upload function
   const uploadVideo = async (blob: Blob) => {
     try {
-      console.log('Starting upload process...');
-      const filename = `recording-${Date.now()}.webm`;
+      console.log('Uploading video, size:', blob.size);
 
-      // 1. Get presigned URL
-      const response = await fetch(
-        'http://localhost:8000/api/v1/videos/upload-url',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            filename,
-            contentType: 'video/webm',
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to get upload URL');
+      if (blob.size < MULTIPART_THRESHOLD) {
+        return uploadSingle(blob);
       }
 
-      const { uploadUrl, key } = await response.json();
-      console.log('Got upload URL:', uploadUrl);
-
-      // 2. Upload to S3/MinIO
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: blob,
-        headers: {
-          'Content-Type': 'video/webm',
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload to storage');
-      }
-
-      console.log('Upload successful! Key:', key);
-
-      // 3. Notify backend to save to database
-      const saveResponse = await fetch(
-        'http://localhost:8000/api/v1/recordings',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            package_code: inputValue || 'PKG-UNKNOWN',
-            duration: Math.round(blob.size / (1024 * 512)), // Dummy duration calc if needed, or track it
-            file_size: blob.size,
-            object_key: key,
-            started_at: new Date(Date.now() - 10000).toISOString(), // Dummy start time
-            ended_at: new Date().toISOString(),
-          }),
-        }
-      );
-
-      if (!saveResponse.ok) {
-        throw new Error('Failed to save recording metadata to database');
-      }
-
-      console.log('Successfully recorded in database');
-      alert('Recording saved successfully!');
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Upload failed check console');
+      return uploadMultipart(blob);
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('Upload failed');
     }
   };
 
@@ -156,6 +241,7 @@ const ScannerRecordingPage = () => {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      if (!canStartRecording) return;
       if (isRecording) {
         setIsRecording(false);
         stopRecording();
@@ -168,7 +254,7 @@ const ScannerRecordingPage = () => {
 
   const handleLogout = () => {
     logout();
-    window.location.href = "/login";
+    window.location.href = '/login';
   };
 
   useEffect(() => {
@@ -220,16 +306,16 @@ const ScannerRecordingPage = () => {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold shadow-md">
-                {user?.username?.[0]?.toUpperCase() || "U"}
+              {user?.username?.[0]?.toUpperCase() || 'U'}
             </div>
             {!isAdmin && (
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                >
-                    <LogOut className="w-4 h-4" />
-                    Logout
-                </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
             )}
           </div>
         </header>
@@ -242,10 +328,10 @@ const ScannerRecordingPage = () => {
             <div className="absolute top-5 left-5 flex items-center gap-3 z-10 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm">
               <div
                 className={cn(
-                  "w-3 h-3 rounded-full transition-all duration-300",
-                  isRecording 
-                    ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" 
-                    : "bg-zinc-500"
+                  'w-3 h-3 rounded-full transition-all duration-300',
+                  isRecording
+                    ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse'
+                    : 'bg-zinc-500',
                 )}
               />
               <span className="text-white text-sm font-medium tracking-wide">
@@ -312,7 +398,7 @@ const ScannerRecordingPage = () => {
                 <div className="flex justify-between items-center">
                   <span>Operator:</span>
                   <span className="font-medium text-foreground">
-                    {user?.username || "Unknown"}
+                    {user?.username || 'Unknown'}
                   </span>
                 </div>
               </div>
@@ -325,12 +411,12 @@ const ScannerRecordingPage = () => {
                   setIsRecording(true);
                   startRecording();
                 }}
-                disabled={isRecording}
+                disabled={isRecording || !canStartRecording}
                 className={cn(
-                  "flex-1 py-4 px-6 rounded-lg font-semibold text-white shadow-md transition-all transform active:scale-95",
-                  isRecording 
-                    ? "bg-zinc-600 opacity-50 cursor-not-allowed" 
-                    : "bg-green-600 hover:bg-green-700 hover:shadow-lg"
+                  'flex-1 py-4 px-6 rounded-lg font-semibold text-white shadow-md transition-all transform active:scale-95',
+                  isRecording || !canStartRecording
+                    ? 'bg-zinc-600 opacity-50 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700 hover:shadow-lg',
                 )}
               >
                 START
@@ -342,20 +428,20 @@ const ScannerRecordingPage = () => {
                 }}
                 disabled={!isRecording}
                 className={cn(
-                    "flex-1 py-4 px-6 rounded-lg font-semibold text-white shadow-md transition-all transform active:scale-95",
-                    !isRecording 
-                      ? "bg-zinc-600 opacity-50 cursor-not-allowed" 
-                      : "bg-red-600 hover:bg-red-700 hover:shadow-lg"
-                  )}
+                  'flex-1 py-4 px-6 rounded-lg font-semibold text-white shadow-md transition-all transform active:scale-95',
+                  !isRecording
+                    ? 'bg-zinc-600 opacity-50 cursor-not-allowed'
+                    : 'bg-red-600 hover:bg-red-700 hover:shadow-lg',
+                )}
               >
                 STOP
               </button>
             </div>
-             <button
-               onClick={downloadVideo}
-               className="w-full py-3 rounded-lg font-medium text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm transition-colors"
-             >
-               Download Recording
+            <button
+              onClick={downloadVideo}
+              className="w-full py-3 rounded-lg font-medium text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm transition-colors"
+            >
+              Download Recording
             </button>
           </div>
         </main>
