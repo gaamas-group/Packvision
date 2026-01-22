@@ -6,9 +6,12 @@ import { cn } from '@/lib/utils';
 
 const ScannerRecordingPage = () => {
   const { accessToken, user, logout } = useAuth();
+  const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const scanBufferRef = useRef('');
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const [activeScanCode, setActiveScanCode] = useState<string | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -47,7 +50,6 @@ const ScannerRecordingPage = () => {
   };
 
   const stopRecording = () => {
-    console.log('Stopping recording');
     if (!mediaRecorderRef.current) return;
 
     mediaRecorderRef.current.onstop = () => {
@@ -55,15 +57,17 @@ const ScannerRecordingPage = () => {
         type: 'video/webm',
       });
 
-      console.log('Recording stopped');
-      console.log('Video Blob:', videoBlob);
-
-      // Upload to backend / S3
       uploadVideo(videoBlob);
+
+      setInputValue('');
+      setActiveScanCode(null);
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
     };
 
-    mediaRecorderRef.current.stop(); // 👈 stops recording
-    setIsRecording(false);
+    mediaRecorderRef.current.stop();
   };
 
   //common function to save metadata
@@ -240,14 +244,39 @@ const ScannerRecordingPage = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      if (!canStartRecording) return;
-      if (isRecording) {
-        setIsRecording(false);
+    // Ignore modifier keys
+    if (e.key.length === 1) {
+      scanBufferRef.current += e.key;
+      return;
+    }
+
+    if (e.key !== 'Enter') return;
+
+    const scannedValue = scanBufferRef.current.trim();
+    scanBufferRef.current = ''; // reset buffer
+
+    if (!scannedValue) return;
+
+    const recorder = mediaRecorderRef.current;
+
+    // 🔴 START
+    if (!recorder || recorder.state === 'inactive') {
+      setInputValue(scannedValue);
+      setActiveScanCode(scannedValue);
+      setIsRecording(true);
+      startRecording();
+      return;
+    }
+
+    // 🟢 STOP only if EXACT MATCH
+    if (recorder.state === 'recording') {
+      if (scannedValue === activeScanCode) {
         stopRecording();
+        setIsRecording(false);
       } else {
-        setIsRecording(true);
-        startRecording();
+        console.warn(
+          `Mismatched barcode ignored: ${scannedValue} !== ${activeScanCode}`,
+        );
       }
     }
   };
@@ -259,6 +288,7 @@ const ScannerRecordingPage = () => {
 
   useEffect(() => {
     async function startCamera() {
+      inputRef.current?.focus();
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -362,6 +392,8 @@ const ScannerRecordingPage = () => {
                 Package ID / Note
               </label>
               <input
+                readOnly={isRecording}
+                ref={inputRef}
                 type="text"
                 value={inputValue}
                 onChange={handleInput}
