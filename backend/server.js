@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import helmet from 'helmet';
 import authRouter from './app/api/v1/auth.js';
 import videosRouter from './app/api/v1/videos.js';
 import ordersRouter from './app/api/v1/orders.js';
@@ -9,6 +10,8 @@ import videoMultipartRoutes from './app/api/v1/videos.multipart.js';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
+
+app.use(helmet());
 
 // CORS middleware - allow frontend to make requests
 app.use((req, res, next) => {
@@ -29,9 +32,10 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+import logger from './app/core/logger.js';
 // Request logging middleware
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  logger.info(`${req.method} ${req.path}`);
   next();
 });
 
@@ -59,7 +63,7 @@ app.use('/api/v1', videoMultipartRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  logger.error(err.stack);
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
@@ -72,6 +76,6 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://127.0.0.1:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`Server running on http://127.0.0.1:${PORT}`);
+  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

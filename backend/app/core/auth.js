@@ -2,8 +2,11 @@ import jwt from "jsonwebtoken";
 import { query } from "../db/connection.js";
 import bcrypt from "bcrypt";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
+if (!process.env.JWT_SECRET) {
+  throw new Error('FATAL_ERROR: JWT_SECRET is not defined in environment variables');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
 const BCRYPT_ROUNDS = 12; // Cost factor for bcrypt hashing
 
@@ -38,7 +41,6 @@ export const verifyToken = (token) => {
 };
 
 export const authenticateUser = async (username, password) => {
-  debugger;
   try {
     const result = await query(
       "SELECT id, username, password_hash, role, tenant_id FROM users WHERE username = $1",
