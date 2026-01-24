@@ -1,5 +1,9 @@
 import express from "express";
 import { authenticateUser, generateToken } from "../../core/auth.js";
+import { loginRateLimiter } from "../../middleware/rateLimiter.js";
+import logger from "../../core/logger.js";
+import { loginValidation } from "./validations.js";
+import { validate } from "../../middleware/validation.js";
 
 const router = express.Router();
 
@@ -7,18 +11,13 @@ const router = express.Router();
  * POST /api/v1/auth/login
  * Authenticate user and return JWT token
  */
-router.post("/login", async (req, res) => {
+router.post("/login", loginValidation, validate, loginRateLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({
-        error: "Username and password are required",
-      });
-    }
-
     const user = await authenticateUser(username, password);
     const access_token = generateToken(user);
+
+    logger.info(`User ${username} logged in successfully`);
 
     res.json({
       access_token,
@@ -31,7 +30,7 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
+    logger.warn(`Failed login attempt for username: ${req.body.username}`);
     res.status(401).json({
       error: error.message || "Invalid credentials",
     });

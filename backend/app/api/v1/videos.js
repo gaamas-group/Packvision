@@ -6,6 +6,9 @@ import {
 } from '../../services/s3Service.js';
 import { authenticate } from '../../core/auth.js';
 import { validateTenant } from '../../middleware/tenantValidation.js';
+import { uploadUrlValidation, downloadUrlValidation } from './validations.js';
+import { validate } from '../../middleware/validation.js';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -16,23 +19,10 @@ router.use(validateTenant);
  * POST /api/v1/videos/upload-url
  * Generate presigned URL for uploading a video
  */
-router.post('/videos/upload-url', async (req, res) => {
+router.post('/videos/upload-url', uploadUrlValidation, validate, async (req, res) => {
   try {
     const { filename, contentType, package_code } = req.body;
     const { tenant_id } = req.user;
-
-    if (!filename) {
-      return res.status(400).json({ error: 'Filename is required' });
-    }
-
-    if (!contentType) {
-      return res.status(400).json({ error: 'ContentType is required' });
-    }
-
-    if (!package_code) {
-      return res.status(400).json({ error: 'package code is required' });
-    }
-
     // Generate recordingId (or use one from frontend if provided, but better to generate or use timestamp)
     const recordingId = `rec_${crypto.randomUUID()}`;
 
@@ -59,7 +49,7 @@ router.post('/videos/upload-url', async (req, res) => {
  * GET /api/v1/videos/download-url/:key
  * Generate presigned URL for downloading a video
  */
-router.get('/videos/download-url/:key', async (req, res) => {
+router.get('/videos/download-url/:key', downloadUrlValidation, validate, async (req, res) => {
   try {
     const { key } = req.params;
     const downloadUrl = await generateDownloadUrl(key);
