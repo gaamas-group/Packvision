@@ -19,14 +19,11 @@ const ScannerRecordingPage = () => {
   const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB
   const MULTIPART_THRESHOLD = 100 * 1024 * 1024; // 100 MB
   const MAX_RETRIES = 3;
-
   const isAdmin = user?.role === 'admin';
 
   const startRecording = () => {
-    console.log('Starting recording');
 
     recordedChunksRef.current = [];
-
     const mediaRecorder = new MediaRecorder(
       mediaStreamRef.current as MediaStream,
       {
@@ -58,10 +55,8 @@ const ScannerRecordingPage = () => {
       });
 
       uploadVideo(videoBlob);
-
       setInputValue('');
       setActiveScanCode(null);
-
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
@@ -286,6 +281,12 @@ const ScannerRecordingPage = () => {
     window.location.href = '/login';
   };
 
+  const handleBlur = () => {
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
+
   useEffect(() => {
     async function startCamera() {
       inputRef.current?.focus();
@@ -308,6 +309,7 @@ const ScannerRecordingPage = () => {
     }
 
     startCamera();
+    inputRef.current?.focus();
 
     return () => {
       const video = videoRef.current;
@@ -392,14 +394,15 @@ const ScannerRecordingPage = () => {
                 Package ID / Note
               </label>
               <input
-                readOnly={isRecording}
                 ref={inputRef}
+                readOnly={isRecording}
                 type="text"
                 value={inputValue}
                 onChange={handleInput}
                 onKeyDown={handleKeyDown}
                 placeholder="Enter details..."
                 className="p-3 rounded-lg border border-input bg-background/50 hover:bg-background focus:bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none text-foreground placeholder:text-muted-foreground shadow-sm"
+                onBlur={handleBlur}
               />
             </div>
 
