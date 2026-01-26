@@ -36,14 +36,8 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
     try {
       const response = await videoAPI.viewVideo(order.object_key)
 
-      if (!response.ok) {
-        throw new Error('Failed to generate view URL');
-      }
-
-      const data = await response.json();
-
-      if (data.downloadUrl) {
-        setViewVideoUrl(data.downloadUrl);
+      if (response.downloadUrl) {
+        setViewVideoUrl(response.downloadUrl);
       }
     } catch (err) {
       console.error(err);
@@ -57,15 +51,9 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
     try {
       const response = await videoAPI.viewVideo(order.object_key)
 
-      if (!response.ok) {
-        throw new Error('Failed to get download URL');
-      }
-
-      const data = await response.json();
-
-      if (data.downloadUrl) {
+      if (response.downloadUrl) {
         // Fetch the file as a blob
-        const fileResponse = await fetch(data.downloadUrl);
+        const fileResponse = await fetch(response.downloadUrl);
         const blob = await fileResponse.blob();
 
         // Create a temporary link to download
