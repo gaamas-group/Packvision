@@ -9,15 +9,22 @@ import videoMultipartRoutes from './app/api/v1/videos.multipart.js';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://packvision.vercel.app'
+];
 
 // CORS middleware - allow frontend to make requests
 app.use((req, res, next) => {
-  res.header(
-    'Access-Control-Allow-Origin',
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-  );
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
 
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
