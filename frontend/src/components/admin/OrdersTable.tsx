@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { useState } from 'react';
+import { videoAPI } from '@/api/video';
 
 export interface Order {
   id: string;
@@ -33,16 +34,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
     }
 
     try {
-      const API_BASE_URL =
-        import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/videos/download-url/${encodeURIComponent(order.object_key)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-          },
-        },
-      );
+      const response = await videoAPI.viewVideo(order.object_key)
 
       if (!response.ok) {
         throw new Error('Failed to generate view URL');
@@ -62,18 +54,8 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
   const handleDownload = async (order: Order) => {
     if (!order.object_key) return;
 
-    const API_BASE_URL =
-      import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/videos/download-url/${encodeURIComponent(order.object_key)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-          },
-        },
-      );
+      const response = await videoAPI.viewVideo(order.object_key)
 
       if (!response.ok) {
         throw new Error('Failed to get download URL');
@@ -103,48 +85,6 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
       alert('Failed to download recording');
     }
   };
-
-  // const handleDownload = async (order: Order) => {
-  //   if (!order.object_key) {
-  //     alert('No recording available for download');
-  //     return;
-  //   }
-
-  //   try {
-  //     // Generate download URL from videos API
-  //     const API_BASE_URL =
-  //       import.meta.env.VITE_API_URL || 'http://localhost:8000';
-  //     const response = await fetch(
-  //       `${API_BASE_URL}/api/v1/videos/download-url/${encodeURIComponent(order.object_key)}`,
-  //       {
-  //         headers: {
-  //           Authorization: `Bearer ${localStorage.getItem('access_token')}`,
-  //         },
-  //       },
-  //     );
-
-  //     if (!response.ok) {
-  //       throw new Error('Failed to generate download URL');
-  //     }
-
-  //     const data = await response.json();
-
-  //     if (data.downloadUrl) {
-  //       // Create a temporary anchor element to trigger download
-  //       const link = document.createElement('a');
-  //       link.href = data.downloadUrl;
-  //       link.download = order.package_code || 'recording';
-  //       document.body.appendChild(link);
-  //       link.click();
-  //       document.body.removeChild(link);
-  //     } else {
-  //       alert('Download URL not available');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error downloading recording:', error);
-  //     alert('Failed to download recording');
-  //   }
-  // };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status?.toLowerCase()) {
