@@ -6,6 +6,8 @@ import {
 } from '../../services/s3Service.js';
 import { authenticate } from '../../core/auth.js';
 import { validateTenant } from '../../middleware/tenantValidation.js';
+import { logAudit } from '../../services/auditService.js';
+import { RECORDING_START, DOWNLOAD } from '../../constants/auditActions.js';
 
 const router = express.Router();
 
@@ -41,6 +43,20 @@ router.post('/videos/upload-url', async (req, res) => {
 
     const uploadUrl = await generateUploadUrl(key, contentType);
 
+    // Audit Log: RECORDING_START
+    logAudit({
+      tenant_id,
+      actor_id: req.user.id,
+      action: RECORDING_START,
+      entity_type: 'recording',
+      entity_id: recordingId,
+      metadata: {
+        bucket: process.env.AWS_S3_BUCKET_NAME || 'test-bucket',
+        key,
+        contentType,
+      },
+    });
+
     res.json({
       uploadUrl,
       key,
@@ -63,6 +79,15 @@ router.get('/videos/download-url/:key', async (req, res) => {
   try {
     const { key } = req.params;
     const downloadUrl = await generateDownloadUrl(key);
+
+    // Audit Log: DOWNLOAD
+    logAudit({
+      tenant_id: req.user.tenant_id,
+      actor_id: req.user.id,
+      action: DOWNLOAD,
+      entity_type: 'video',
+      metadata: { key },
+    });
 
     res.json({
       downloadUrl,

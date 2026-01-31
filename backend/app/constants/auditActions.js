@@ -1,0 +1,10 @@
+export const LOGIN = 'LOGIN';
+export const LOGOUT = 'LOGOUT';
+export const RECORDING_START = 'RECORDING_START';
+export const RECORDING_STOP = 'RECORDING_STOP';
+export const UPLOAD_SUCCESS = 'UPLOAD_SUCCESS';
+export const UPLOAD_FAILED = 'UPLOAD_FAILED';
+export const DOWNLOAD = 'DOWNLOAD';
+export const DELETE = 'DELETE';
+export const RETURN_MARKED = 'RETURN_MARKED';
+export const ADMIN_ACTION = 'ADMIN_ACTION';

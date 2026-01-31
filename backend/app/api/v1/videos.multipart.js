@@ -9,6 +9,12 @@ import {
 import { generateS3Key } from '../../services/s3Service.js';
 import { authenticate } from '../../core/auth.js';
 import { validateTenant } from '../../middleware/tenantValidation.js';
+import { logAudit } from '../../services/auditService.js';
+import {
+  RECORDING_START,
+  UPLOAD_SUCCESS,
+  UPLOAD_FAILED,
+} from '../../constants/auditActions.js';
 
 const router = express.Router();
 
@@ -30,6 +36,16 @@ router.post('/videos/multipart/init', async (req, res) => {
   const key = generateS3Key(tenant_id, package_code, recordingId);
 
   const uploadId = await initiateMultipartUpload(key, contentType);
+
+  // Audit Log: RECORDING_START
+  logAudit({
+    tenant_id,
+    actor_id: req.user.id,
+    action: RECORDING_START,
+    entity_type: 'recording',
+    entity_id: recordingId,
+    metadata: { key, contentType, uploadId },
+  });
 
   res.json({ uploadId, key, recordingId });
 });
@@ -69,6 +85,15 @@ router.post('/videos/multipart/complete', async (req, res) => {
     parts,
   });
 
+  // Audit Log: UPLOAD_SUCCESS
+  logAudit({
+    tenant_id: req.user.tenant_id,
+    actor_id: req.user.id,
+    action: UPLOAD_SUCCESS,
+    entity_type: 'recording',
+    metadata: { key, uploadId },
+  });
+
   res.json({ success: true });
 });
 
@@ -83,6 +108,15 @@ router.post('/videos/multipart/abort', async (req, res) => {
   }
 
   await abortMultipartUpload({ key, uploadId });
+
+  // Audit Log: UPLOAD_FAILED (Aborted)
+  logAudit({
+    tenant_id: req.user.tenant_id,
+    actor_id: req.user.id,
+    action: UPLOAD_FAILED,
+    entity_type: 'recording',
+    metadata: { key, uploadId, reason: 'aborted_by_user' },
+  });
 
   res.json({ aborted: true });
 });

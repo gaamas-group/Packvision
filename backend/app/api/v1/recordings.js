@@ -3,6 +3,8 @@ import { query } from '../../db/connection.js';
 import { authenticate } from '../../core/auth.js';
 import { generateDownloadUrl } from '../../services/s3Service.js';
 import { validateTenant } from '../../middleware/tenantValidation.js';
+import { logAudit } from '../../services/auditService.js';
+import { RECORDING_STOP, DOWNLOAD } from '../../constants/auditActions.js';
 
 const router = express.Router();
 
@@ -89,6 +91,22 @@ router.post('/recordings', async (req, res) => {
       ],
     );
 
+    // Audit Log: RECORDING_STOP
+    logAudit({
+      tenant_id,
+      actor_id: user_id,
+      action: RECORDING_STOP,
+      entity_type: 'recording',
+      entity_id: insertResult.rows[0].id,
+      metadata: {
+        order_id,
+        bucket,
+        object_key,
+        duration,
+        file_size,
+      },
+    });
+
     res.status(201).json({
       message: 'Recording linked successfully',
       recording_id: insertResult.rows[0].id,
@@ -124,6 +142,16 @@ router.get('/recordings/:id/presigned-url', async (req, res) => {
 
     // 2. Generate presigned URL (valid for 120 seconds as per request)
     const presignedUrl = await generateDownloadUrl(object_key, 120, bucket);
+
+    // Audit Log: DOWNLOAD
+    logAudit({
+      tenant_id: req.user.tenant_id,
+      actor_id: req.user.id,
+      action: DOWNLOAD,
+      entity_type: 'recording',
+      entity_id: id,
+      metadata: { bucket, object_key, reason: 'playback' },
+    });
 
     res.json({
       presignedUrl,

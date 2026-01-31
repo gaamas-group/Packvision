@@ -19,7 +19,6 @@ export default function AdminDashboard() {
         setIsLoadingOrders(true);
         setError(null);
 
-        // Fetch stats and orders in parallel
         const [statsData, ordersData] = await Promise.all([
           adminAPI.getStats(),
           adminAPI.getOrders(),

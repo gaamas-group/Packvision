@@ -1,6 +1,8 @@
 import express from 'express';
 import { query } from '../../db/connection.js';
-import { authenticate, authorize } from '../../core/auth.js';
+import { authenticate, authorize, hashPassword } from '../../core/auth.js';
+import { logAudit } from '../../services/auditService.js';
+import { ADMIN_ACTION } from '../../constants/auditActions.js';
 
 const router = express.Router();
 
@@ -93,6 +95,89 @@ router.get('/stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching admin stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+/**
+ * GET /api/v1/admin/packagers
+ * fetch all packagers for the authenticated admin's tenant
+ */
+router.get('/packagers', async (req, res) => {
+  try {
+    const { tenant_id } = req.user;
+
+    const sql = `
+      SELECT 
+        id, 
+        username,
+        created_at
+      FROM users 
+      WHERE tenant_id = $1 
+      AND role = 'packager'
+      ORDER BY created_at DESC
+    `;
+
+    const result = await query(sql, [tenant_id]);
+    res.json({ packagers: result.rows });
+  } catch (error) {
+    console.error('Error fetching packagers:', error);
+    res.status(500).json({ error: 'Failed to fetch packagers' });
+  }
+});
+
+/**
+ * POST /api/v1/admin/packagers
+ * Create a new packager
+ */
+router.post('/packagers', async (req, res) => {
+  try {
+    const { tenant_id } = req.user;
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res
+        .status(400)
+        .json({ error: 'Username and password are required' });
+    }
+
+    // Check if username already exists
+    const existingUser = await query(
+      'SELECT id FROM users WHERE username = $1',
+      [username],
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({ error: 'Username already taken' });
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    const result = await query(
+      "INSERT INTO users (tenant_id, username, password_hash, role) VALUES ($1, $2, $3, 'packager') RETURNING id, username, created_at",
+      [tenant_id, username, hashedPassword],
+    );
+
+    // Audit Log: ADMIN_ACTION (Create Packager)
+    logAudit({
+      tenant_id,
+      actor_id: req.user.id,
+      action: ADMIN_ACTION,
+      entity_type: 'user',
+      entity_id: result.rows[0].id,
+      metadata: {
+        target_username: result.rows[0].username,
+        action_detail: 'create_packager',
+      },
+    });
+
+    res.status(201).json({ packager: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating packager:', error);
+    res.status(500).json({
+      error: 'Failed to create packager',
+      details: error.message,
+      code: error.code, // for SQL errors
+    });
   }
 });
 
