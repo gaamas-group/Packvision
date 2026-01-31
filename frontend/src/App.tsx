@@ -4,6 +4,7 @@ import { AuthProvider } from './auth/AuthContext';
 import LoginPage from './auth/LoginPage';
 import ProtectedRoute from './auth/ProtectedRoute';
 import ScannerRecordingPage from './roles/packager/pages/ScannerRecordingPage';
+import PackagerManagement from './roles/admin/pages/PackagerManagement';
 import AdminDashboard from './roles/admin/pages/AdminDashboard';
 
 function App() {
@@ -12,22 +13,25 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          
-          {/* Admin Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard/>} />
-          </Route>
+            <Route path="/login" element={<LoginPage />} />
 
-          {/* Packager Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['packager', 'admin']} />}>
-            <Route path="/packager/scan" element={<ScannerRecordingPage />} />
-          </Route>
+            {/* Admin Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/packagers" element={<PackagerManagement />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/login" />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+            {/* Packager Routes */}
+            <Route
+              element={<ProtectedRoute allowedRoles={['packager', 'admin']} />}
+            >
+              <Route path="/packager/scan" element={<ScannerRecordingPage />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/login" />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
     </div>
   );
 }

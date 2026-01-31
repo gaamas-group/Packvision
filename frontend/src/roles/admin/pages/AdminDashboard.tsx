@@ -1,45 +1,45 @@
-import { useEffect, useState } from "react"
-import { AdminSidebar } from "@/components/admin/AdminSidebar"
-import { StatsCards, type DashboardStats } from "@/components/admin/StatsCards"
-import { OrdersTable, type Order } from "@/components/admin/OrdersTable"
-import { adminAPI } from "@/api/admin"
-import { GalleryVerticalEnd } from "lucide-react"
+import { useEffect, useState } from 'react';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { StatsCards, type DashboardStats } from '@/components/admin/StatsCards';
+import { OrdersTable, type Order } from '@/components/admin/OrdersTable';
+import { adminAPI } from '@/api/admin';
+import { GalleryVerticalEnd } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [orders, setOrders] = useState<Order[]>([])
-  const [isLoadingStats, setIsLoadingStats] = useState(true)
-  const [isLoadingOrders, setIsLoadingOrders] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setIsLoadingStats(true)
-        setIsLoadingOrders(true)
-        setError(null)
+        setIsLoadingStats(true);
+        setIsLoadingOrders(true);
+        setError(null);
 
         // Fetch stats and orders in parallel
         const [statsData, ordersData] = await Promise.all([
           adminAPI.getStats(),
           adminAPI.getOrders(),
-        ])
+        ]);
 
-        setStats(statsData)
-        setOrders(ordersData)
+        setStats(statsData);
+        setOrders(ordersData);
       } catch (err) {
-        console.error("Error fetching dashboard data:", err)
+        console.error('Error fetching dashboard data:', err);
         setError(
-          err instanceof Error ? err.message : "Failed to load dashboard data"
-        )
+          err instanceof Error ? err.message : 'Failed to load dashboard data',
+        );
       } finally {
-        setIsLoadingStats(false)
-        setIsLoadingOrders(false)
+        setIsLoadingStats(false);
+        setIsLoadingOrders(false);
       }
-    }
+    };
 
-    fetchData()
-  }, [])
+    fetchData();
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden dark bg-background">
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
             <div className="bg-red-600 text-white flex size-6 items-center justify-center rounded-md">
               <GalleryVerticalEnd className="size-4" />
             </div>
-            <span className="font-semibold text-lg">PackVision Admin Panel</span>
+            <span className="font-semibold text-lg text-white">PackVision</span>
           </div>
         </header>
 
@@ -78,5 +78,5 @@ export default function AdminDashboard() {
         </main>
       </div>
     </div>
-  )
+  );
 }
