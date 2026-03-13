@@ -1,0 +1,80 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id         String      @id @default(uuid()) @db.Uuid
+  name       String
+  createdAt  DateTime?   @default(now()) @map("created_at") @db.Timestamptz
+  orders     Order[]
+  recordings Recording[]
+  users      User[]
+
+  @@map("tenants")
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  tenantId     String      @map("tenant_id") @db.Uuid
+  username     String
+  passwordHash String      @map("password_hash")
+  role         String?     @default("member")
+  createdAt    DateTime?   @default(now()) @map("created_at") @db.Timestamptz
+  tenant       Tenant      @relation(fields: [tenantId], references: [id])
+  recordings   Recording[]
+
+  @@map("users")
+}
+
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  tenantId        String      @map("tenant_id") @db.Uuid
+  externalOrderId String?     @map("external_order_id")
+  packageCode     String      @map("package_code")
+  status          String?     @default("pending")
+  createdAt       DateTime?   @default(now()) @map("created_at") @db.Timestamptz
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  recordings      Recording[]
+
+  @@map("orders")
+}
+
+model Recording {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  orderId         String    @map("order_id") @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  bucket          String
+  objectKey       String    @map("object_key")
+  fileSize        BigInt?   @map("file_size")
+  durationSeconds Int?      @map("duration_seconds")
+  startedAt       DateTime? @map("started_at") @db.Timestamptz
+  endedAt         DateTime? @map("ended_at") @db.Timestamptz
+  status          String?   @default("completed")
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamptz
+  order           Order     @relation(fields: [orderId], references: [id])
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@map("recordings")
+}
+
+model AuditLog {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  actorId    String?   @map("actor_id") @db.Uuid
+  action     String    @db.VarChar
+  entityType String?   @map("entity_type") @db.VarChar
+  entityId   String?   @map("entity_id") @db.Uuid
+  metadata   Json?
+  ipAddress  String?   @map("ip_address") @db.Inet
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("audit_logs")
+}

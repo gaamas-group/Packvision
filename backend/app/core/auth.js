@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { query } from '../db/connection.js';
+import prisma from '../db/connection.js';
 import bcrypt from 'bcrypt';
 
 const JWT_SECRET =
@@ -40,24 +40,22 @@ export const verifyToken = (token) => {
 export const authenticateUser = async (username, password) => {
   debugger;
   try {
-    const result = await query(
-      'SELECT id, username, password_hash, role, tenant_id FROM users WHERE username = $1',
-      [username],
-    );
+    const user = await prisma.user.findFirst({
+      where: { username },
+    });
 
-    if (result.rows.length === 0) {
+    if (!user) {
       throw new Error('Invalid credentials');
     }
 
-    const user = result.rows[0];
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
     if (!isPasswordValid) {
       throw new Error('Invalid credentials');
     }
-    const { password_hash, ...userWithoutPassword } = user;
+    const { passwordHash, ...userWithoutPassword } = user;
 
-    return userWithoutPassword;
+    return { ...userWithoutPassword, tenant_id: user.tenantId };
   } catch (error) {
     throw error;
   }
@@ -91,17 +89,17 @@ export const authenticate = async (req, res, next) => {
     const decoded = verifyToken(token);
 
     // Optionally, verify user still exists in database
-    const userResult = await query(
-      'SELECT id, username, role, tenant_id FROM users WHERE id = $1',
-      [decoded.id],
-    );
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, username: true, role: true, tenantId: true }
+    });
 
-    if (userResult.rows.length === 0) {
+    if (!user) {
       return res.status(401).json({ error: 'User not found' });
     }
 
     // Attach user info to request object
-    req.user = userResult.rows[0];
+    req.user = { ...user, tenant_id: user.tenantId };
     req.token = decoded;
 
     next();

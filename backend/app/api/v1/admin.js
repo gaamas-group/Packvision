@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../../db/connection.js';
+import prisma from '../../db/connection.js';
 import { authenticate, authorize, hashPassword } from '../../core/auth.js';
 import { logAudit } from '../../services/auditService.js';
 import { ADMIN_ACTION } from '../../constants/auditActions.js';
@@ -19,55 +19,46 @@ router.get('/recordings', async (req, res) => {
     const { tenant_id } = req.user;
     const { package_code, status, limit = 50, offset = 0 } = req.query;
 
-    let sql = `
-      SELECT 
-        r.id,
-        r.tenant_id,
-        r.order_id,
-        r.user_id,
-        r.bucket,
-        r.object_key,
-        r.file_size,
-        r.duration_seconds,
-        r.started_at,
-        r.ended_at,
-        r.status,
-        r.created_at,
-        o.package_code,
-        u.username as packager_name
-      FROM recordings r
-      JOIN orders o ON r.order_id = o.id
-      JOIN users u ON r.user_id = u.id
-      WHERE r.tenant_id = $1
-    `;
+    const where = { tenantId: tenant_id };
+    if (package_code) where.order = { packageCode: package_code };
+    if (status) where.status = status;
 
-    const params = [tenant_id];
-    let paramIndex = 2;
+    const [count, recordings] = await Promise.all([
+      prisma.recording.count({ where }),
+      prisma.recording.findMany({
+        where,
+        include: {
+          order: { select: { packageCode: true } },
+          user: { select: { username: true } }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: parseInt(limit),
+        skip: parseInt(offset),
+      })
+    ]);
 
-    if (package_code) {
-      sql += ` AND o.package_code = $${paramIndex}`;
-      params.push(package_code);
-      paramIndex++;
-    }
-
-    if (status) {
-      sql += ` AND r.status = $${paramIndex}`;
-      params.push(status);
-      paramIndex++;
-    }
-
-    sql += ` ORDER BY r.created_at DESC LIMIT $${paramIndex} OFFSET $${
-      paramIndex + 1
-    }`;
-    params.push(limit, offset);
-
-    const result = await query(sql, params);
+    const formattedRecordings = recordings.map(r => ({
+      id: r.id,
+      tenant_id: r.tenantId,
+      order_id: r.orderId,
+      user_id: r.userId,
+      bucket: r.bucket,
+      object_key: r.objectKey,
+      file_size: r.fileSize ? Number(r.fileSize) : null,
+      duration_seconds: r.durationSeconds,
+      started_at: r.startedAt,
+      ended_at: r.endedAt,
+      status: r.status,
+      created_at: r.createdAt,
+      package_code: r.order.packageCode,
+      packager_name: r.user.username,
+    }));
 
     res.json({
-      recordings: result.rows,
+      recordings: formattedRecordings,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      count: result.rowCount,
+      count,
     });
   } catch (error) {
     console.error('Error fetching admin recordings:', error);
@@ -83,15 +74,13 @@ router.get('/stats', async (req, res) => {
   try {
     const { tenant_id } = req.user;
 
-    const statsQuery = `
-      SELECT 
-        (SELECT COUNT(*) FROM orders WHERE tenant_id = $1) as total_orders,
-        (SELECT COUNT(*) FROM recordings WHERE tenant_id = $1) as total_recordings,
-        (SELECT COUNT(*) FROM recordings WHERE tenant_id = $1 AND status = 'returned') as total_returned
-    `;
+    const [total_orders, total_recordings, total_returned] = await Promise.all([
+      prisma.order.count({ where: { tenantId: tenant_id } }),
+      prisma.recording.count({ where: { tenantId: tenant_id } }),
+      prisma.recording.count({ where: { tenantId: tenant_id, status: 'returned' } })
+    ]);
 
-    const result = await query(statsQuery, [tenant_id]);
-    res.json(result.rows[0]);
+    res.json({ total_orders, total_recordings, total_returned });
   } catch (error) {
     console.error('Error fetching admin stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
@@ -106,19 +95,17 @@ router.get('/packagers', async (req, res) => {
   try {
     const { tenant_id } = req.user;
 
-    const sql = `
-      SELECT 
-        id, 
-        username,
-        created_at
-      FROM users 
-      WHERE tenant_id = $1 
-      AND role = 'packager'
-      ORDER BY created_at DESC
-    `;
-
-    const result = await query(sql, [tenant_id]);
-    res.json({ packagers: result.rows });
+    const packagers = await prisma.user.findMany({
+      where: { tenantId: tenant_id, role: 'packager' },
+      select: { id: true, username: true, createdAt: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    res.json({ packagers: packagers.map(p => ({
+      id: p.id,
+      username: p.username,
+      created_at: p.createdAt
+    }))});
   } catch (error) {
     console.error('Error fetching packagers:', error);
     res.status(500).json({ error: 'Failed to fetch packagers' });
@@ -141,21 +128,26 @@ router.post('/packagers', async (req, res) => {
     }
 
     // Check if username already exists
-    const existingUser = await query(
-      'SELECT id FROM users WHERE username = $1',
-      [username],
-    );
+    const existingUser = await prisma.user.findFirst({
+      where: { username },
+      select: { id: true }
+    });
 
-    if (existingUser.rows.length > 0) {
+    if (existingUser) {
       return res.status(409).json({ error: 'Username already taken' });
     }
 
     const hashedPassword = await hashPassword(password);
 
-    const result = await query(
-      "INSERT INTO users (tenant_id, username, password_hash, role) VALUES ($1, $2, $3, 'packager') RETURNING id, username, created_at",
-      [tenant_id, username, hashedPassword],
-    );
+    const user = await prisma.user.create({
+      data: {
+        tenantId: tenant_id,
+        username,
+        passwordHash: hashedPassword,
+        role: 'packager'
+      },
+      select: { id: true, username: true, createdAt: true }
+    });
 
     // Audit Log: ADMIN_ACTION (Create Packager)
     logAudit({
@@ -163,14 +155,18 @@ router.post('/packagers', async (req, res) => {
       actor_id: req.user.id,
       action: ADMIN_ACTION,
       entity_type: 'user',
-      entity_id: result.rows[0].id,
+      entity_id: user.id,
       metadata: {
-        target_username: result.rows[0].username,
+        target_username: user.username,
         action_detail: 'create_packager',
       },
     });
 
-    res.status(201).json({ packager: result.rows[0] });
+    res.status(201).json({ packager: {
+      id: user.id,
+      username: user.username,
+      created_at: user.createdAt
+    }});
   } catch (error) {
     console.error('Error creating packager:', error);
     res.status(500).json({

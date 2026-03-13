@@ -1,4 +1,4 @@
-import { query } from '../db/connection.js';
+import prisma from '../db/connection.js';
 
 /**
  * Tenant Validation Middleware
@@ -15,11 +15,12 @@ export const validateTenant = async (req, res, next) => {
     const tenantId = req.user.tenant_id;
 
     // 2. Query database to validate tenant existence
-    const result = await query('SELECT id FROM tenants WHERE id = $1', [
-      tenantId,
-    ]);
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true }
+    });
 
-    if (result.rows.length === 0) {
+    if (!tenant) {
       return res.status(403).json({ error: 'Invalid tenant access' });
     }
 

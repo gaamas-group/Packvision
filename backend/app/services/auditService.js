@@ -1,4 +1,4 @@
-import { query } from '../db/connection.js';
+import prisma from '../db/connection.js';
 
 /**
  * Log an audit event to the database.
@@ -32,28 +32,16 @@ export const logAudit = async ({
       return;
     }
 
-    const sql = `
-      INSERT INTO audit_logs (
-        tenant_id,
-        actor_id,
+    await prisma.auditLog.create({
+      data: {
+        tenantId: tenant_id,
+        actorId: actor_id,
         action,
-        entity_type,
-        entity_id,
-        metadata,
-        created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
-    `;
-
-    const values = [
-      tenant_id,
-      actor_id,
-      action,
-      entity_type,
-      entity_id,
-      metadata,
-    ];
-
-    await query(sql, values);
+        entityType: entity_type,
+        entityId: entity_id,
+        metadata: metadata || {},
+      }
+    });
   } catch (error) {
     // Silent failure to avoid breaking the main flow
     // In a real production system, this might log to an error monitoring service

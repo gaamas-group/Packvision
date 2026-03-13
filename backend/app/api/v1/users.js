@@ -1,5 +1,5 @@
 import express from "express";
-import { query } from "../../db/connection.js";
+import prisma from "../../db/connection.js";
 import { authenticate } from "../../core/auth.js";
 
 const router = express.Router();
@@ -11,37 +11,30 @@ router.get("/users", async (req, res) => {
   try {
     const { role, tenant_id } = req.query;
 
-    let sql = `
-      SELECT 
-        u.id,
-        u.username,
-        u.role,
-        u.tenant_id,
-        t.name as tenant_name,
-        u.created_at
-      FROM users u
-      LEFT JOIN tenants t ON u.tenant_id = t.id
-      WHERE 1=1
-    `;
-    const params = [];
-    let paramIndex = 1;
+    const where = {};
+    if (role) where.role = role;
+    if (tenant_id) where.tenantId = tenant_id;
 
-    if (role) {
-      sql += ` AND u.role = $${paramIndex}`;
-      params.push(role);
-      paramIndex++;
-    }
+    const users = await prisma.user.findMany({
+      where,
+      include: {
+        tenant: {
+          select: { name: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-    if (tenant_id) {
-      sql += ` AND u.tenant_id = $${paramIndex}`;
-      params.push(tenant_id);
-      paramIndex++;
-    }
+    const formattedUsers = users.map(u => ({
+      id: u.id,
+      username: u.username,
+      role: u.role,
+      tenant_id: u.tenantId,
+      tenant_name: u.tenant?.name,
+      created_at: u.createdAt,
+    }));
 
-    sql += " ORDER BY u.created_at DESC";
-
-    const result = await query(sql, params);
-    res.json({ users: result.rows });
+    res.json({ users: formattedUsers });
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ error: "Failed to fetch users" });
@@ -64,17 +57,17 @@ router.get("/users/:id/role", async (req, res) => {
       });
     }
 
-    const result = await query(
-      "SELECT id, username, role FROM users WHERE id = $1",
-      [id]
-    );
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, username: true, role: true }
+    });
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const { id: userId, username, role } = result.rows[0];
-    res.json({ id: userId, username, role });
+    const { id: userId, username, role: userRole } = user;
+    res.json({ id: userId, username, role: userRole });
   } catch (error) {
     console.error("Error fetching user role:", error);
     res.status(500).json({ error: "Failed to fetch user role" });
