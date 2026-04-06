@@ -46,7 +46,6 @@ router.post('/recordings', async (req, res) => {
 
     // 1. Find or create order using tenant_id + package_code
     let order_id;
-    let recording_type = 'PACKAGED';
     const orderResult = await prisma.order.findFirst({
       where: { tenantId: tenant_id, packageCode: package_code },
       select: { id: true }
@@ -69,8 +68,14 @@ router.post('/recordings', async (req, res) => {
       order_id = newOrderResult.id;
     } else {
       order_id = orderResult.id;
-      recording_type = 'RETURNED';
     }
+
+    // 2. Check duplicate recordings for this order to determine type
+    const existingRecordingsCount = await prisma.recording.count({
+      where: { tenantId: tenant_id, orderId: order_id }
+    });
+
+    const recording_type = existingRecordingsCount > 0 ? 'RETURNED' : 'PACKAGED';
 
     // 2. Insert into recordings
     // Note: The object_key convention mentioned in user request: {tenant_id}/{order_id}/{recording_id}.webm
