@@ -9,6 +9,7 @@ export interface Order {
   id: string;
   package_code: string;
   status: string;
+  type?: string;
   external_order_id?: string;
   created_at?: string;
   updated_at?: string;
@@ -127,6 +128,19 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
       cell: (row) => (
         <Badge variant={getStatusBadgeVariant(row.status)}>
           {row.status.toUpperCase() || 'Unknown'}
+        </Badge>
+      ),
+      className: 'font-medium text-foreground',
+    },
+    {
+      id: 'type',
+      header: 'Type',
+      accessorKey: 'type',
+      filterable: false,
+      filterPlaceholder: 'Search...',
+      cell: (row) => (
+        <Badge variant={row.type === 'RETURNED' ? 'destructive' : 'secondary'}>
+          {row.type || 'PACKAGED'}
         </Badge>
       ),
       className: 'font-medium text-foreground',

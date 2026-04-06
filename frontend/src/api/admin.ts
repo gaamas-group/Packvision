@@ -1,15 +1,15 @@
-import apiClient from './client.js';
+import axios from 'axios';
 
 export const adminAPI = {
   // Get dashboard statistics
   getStats: async () => {
-    const response = await apiClient.get('/admin/stats');
+    const response = await axios.get('/admin/stats');
     return response.data;
   },
 
   // Get all orders (via recordings endpoint which includes order info)
   getOrders: async () => {
-    const response = await apiClient.get('/admin/recordings');
+    const response = await axios.get('/admin/recordings');
     // Transform recordings data to orders format
     const recordings = response.data.recordings || [];
 
@@ -23,6 +23,7 @@ export const adminAPI = {
           id: orderId,
           package_code: recording.package_code,
           status: recording.status || 'packed',
+          type: recording.type || 'PACKAGED',
           external_order_id: recording.external_order_id,
           created_at: recording.created_at,
           updated_at: recording.ended_at,
@@ -39,12 +40,12 @@ export const adminAPI = {
   },
 
   getPackagers: async () => {
-    const response = await apiClient.get('/admin/packagers');
+    const response = await axios.get('/admin/packagers');
     return response.data.packagers;
   },
 
   createPackager: async (data: any) => {
-    const response = await apiClient.post('/admin/packagers', data);
+    const response = await axios.post('/admin/packagers', data);
     return response.data.packager;
   },
 };

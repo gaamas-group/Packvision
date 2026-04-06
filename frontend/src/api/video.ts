@@ -1,11 +1,11 @@
-import apiClient from "./client.js"
+import axios from "axios"
 
 export const videoAPI = {
     viewVideo: async (objectKey: any) => {
         if (!objectKey) {
           throw new Error("objectKey is required")
         }
-        const response = await apiClient.get(
+        const response = await axios.get(
           `/videos/download-url/${encodeURIComponent(objectKey)}`
         )
         return response.data 

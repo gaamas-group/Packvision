@@ -49,6 +49,7 @@ router.get('/recordings', async (req, res) => {
       started_at: r.startedAt,
       ended_at: r.endedAt,
       status: r.status,
+      type: r.type,
       created_at: r.createdAt,
       package_code: r.order.packageCode,
       packager_name: r.user.username,

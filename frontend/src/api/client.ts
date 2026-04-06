@@ -1,16 +1,13 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://packvision-be.onrender.com/api/v1";
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+// Globally configure axios defaults
+axios.defaults.baseURL = API_BASE_URL;
+axios.defaults.headers.common["Content-Type"] = "application/json";
 
 // Request interceptor to add auth token
-apiClient.interceptors.request.use(
+axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("access_token");
     if (token) {
@@ -24,7 +21,7 @@ apiClient.interceptors.request.use(
 );
 
 // Response interceptor for error handling
-apiClient.interceptors.response.use(
+axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
@@ -37,6 +34,3 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-export default apiClient;
-

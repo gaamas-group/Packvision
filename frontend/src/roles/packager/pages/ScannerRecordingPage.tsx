@@ -3,16 +3,28 @@ import { useAuth } from '../../../auth/AuthContext';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import axios from 'axios';
 
 const ScannerRecordingPage = () => {
-  const { accessToken, user, logout } = useAuth();
+  const { user, logout } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const scanBufferRef = useRef('');
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [activeScanCode, setActiveScanCode] = useState<string | null>(null);
+  const activeScanCodeRef = useRef<string | null>(null);
+  const userUsernameRef = useRef<string | undefined>(user?.username);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    activeScanCodeRef.current = activeScanCode;
+  }, [activeScanCode]);
+
+  useEffect(() => {
+    userUsernameRef.current = user?.username;
+  }, [user?.username]);
   const [isRecording, setIsRecording] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const canStartRecording = inputValue.trim().length > 0;
@@ -24,8 +36,15 @@ const ScannerRecordingPage = () => {
   const startRecording = () => {
 
     recordedChunksRef.current = [];
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      console.error("Canvas ref not set");
+      return;
+    }
+    const canvasStream = (canvas as any).captureStream(30) as MediaStream;
+
     const mediaRecorder = new MediaRecorder(
-      mediaStreamRef.current as MediaStream,
+      canvasStream,
       {
         mimeType: 'video/webm; codecs=vp8',
       },
@@ -67,46 +86,31 @@ const ScannerRecordingPage = () => {
 
   //common function to save metadata
   const saveRecordingMetadata = async (blob: Blob, key: string) => {
-    const res = await fetch('http://localhost:8000/api/v1/recordings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
+    try {
+      await axios.post('/recordings', {
         package_code: inputValue || 'PKG-UNKNOWN',
         duration: Math.round(blob.size / (1024 * 512)),
         file_size: blob.size,
         object_key: key,
         started_at: new Date(Date.now() - 10000).toISOString(),
         ended_at: new Date().toISOString(),
-      }),
-    });
-
-    if (!res.ok) throw new Error('DB save failed');
-
-    alert('Recording saved successfully!');
+      });
+      alert('Recording saved successfully!');
+    } catch (error) {
+      console.error('Failed to save metadata:', error);
+      throw new Error('DB save failed');
+    }
   };
 
   //function to upload normal video
   const uploadSingle = async (blob: Blob) => {
-    const response = await fetch(
-      'http://localhost:8000/api/v1/videos/upload-url',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          filename: `recording-${Date.now()}.webm`,
-          contentType: 'video/webm',
-          package_code: inputValue,
-        }),
-      },
-    );
+    const response = await axios.post('/videos/upload-url', {
+      filename: `recording-${Date.now()}.webm`,
+      contentType: 'video/webm',
+      package_code: inputValue,
+    });
 
-    const { uploadUrl, key } = await response.json();
+    const { uploadUrl, key } = response.data;
 
     await fetch(uploadUrl, {
       method: 'PUT',
@@ -122,22 +126,12 @@ const ScannerRecordingPage = () => {
     console.log('Using multipart upload');
 
     // 1️⃣ INIT
-    const initRes = await fetch(
-      'http://localhost:8000/api/v1/videos/multipart/init',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          contentType: 'video/webm',
-          package_code: inputValue,
-        }),
-      },
-    ).then((r) => r.json());
+    const initRes = await axios.post('/videos/multipart/init', {
+      contentType: 'video/webm',
+      package_code: inputValue,
+    });
 
-    const { uploadId, key } = initRes;
+    const { uploadId, key } = initRes.data;
 
     const totalParts = Math.ceil(blob.size / CHUNK_SIZE);
     const uploadedParts: { PartNumber: number; ETag: string }[] = [];
@@ -153,21 +147,12 @@ const ScannerRecordingPage = () => {
       while (attempt < MAX_RETRIES) {
         try {
           // Get presigned URL
-          const { url } = await fetch(
-            'http://localhost:8000/api/v1/videos/multipart/part-url',
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${accessToken}`,
-              },
-              body: JSON.stringify({
-                key,
-                uploadId,
-                partNumber,
-              }),
-            },
-          ).then((r) => r.json());
+          const urlResponse = await axios.post('/videos/multipart/part-url', {
+            key,
+            uploadId,
+            partNumber,
+          });
+          const { url } = urlResponse.data;
 
           const res = await fetch(url, {
             method: 'PUT',
@@ -189,17 +174,10 @@ const ScannerRecordingPage = () => {
     }
 
     // 3️⃣ COMPLETE
-    await fetch('http://localhost:8000/api/v1/videos/multipart/complete', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        key,
-        uploadId,
-        parts: uploadedParts.sort((a, b) => a.PartNumber - b.PartNumber),
-      }),
+    await axios.post('/videos/multipart/complete', {
+      key,
+      uploadId,
+      parts: uploadedParts.sort((a, b) => a.PartNumber - b.PartNumber),
     });
 
     await saveRecordingMetadata(blob, key);
@@ -288,6 +266,59 @@ const ScannerRecordingPage = () => {
   };
 
   useEffect(() => {
+    let animationFrameId: number;
+
+    const drawFrame = () => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+
+      if (!video || !canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Initialize dimensions
+      if (video.videoWidth && video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+
+      const render = () => {
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+          }
+        }
+        
+        if (canvas.width > 0 && canvas.height > 0) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const now = new Date();
+          const timestamp = now.toLocaleString();
+
+          // Bottom right Timestamp
+          ctx.font = '24px Arial';
+          ctx.fillStyle = 'red';
+          ctx.textAlign = 'right';
+          ctx.fillText(timestamp, canvas.width - 20, canvas.height - 30);
+
+          // Top left Audit Info
+          ctx.textAlign = 'left';
+          if (activeScanCodeRef.current) {
+            ctx.fillText(`Code: ${activeScanCodeRef.current}`, 20, 40);
+          }
+          if (userUsernameRef.current) {
+            ctx.fillText(`User: ${userUsernameRef.current}`, 20, 70);
+          }
+        }
+
+        animationFrameId = requestAnimationFrame(render);
+      };
+
+      render();
+    };
+
     async function startCamera() {
       inputRef.current?.focus();
       try {
@@ -302,6 +333,10 @@ const ScannerRecordingPage = () => {
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current!.play();
+            drawFrame();
+          };
         }
       } catch (err) {
         console.error('Error accessing camera:', err);
@@ -313,7 +348,9 @@ const ScannerRecordingPage = () => {
 
     return () => {
       const video = videoRef.current;
-
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
       if (video && video.srcObject) {
         const stream = video.srcObject as MediaStream;
         stream.getTracks().forEach((track) => track.stop());
@@ -384,6 +421,8 @@ const ScannerRecordingPage = () => {
               muted
               className="w-full h-full object-cover"
             />
+            {/* Hidden canvas for capturing video + timestamp frames */}
+            <canvas ref={canvasRef} className="absolute opacity-0 pointer-events-none" />
           </div>
 
           {/* Right Column: Controls & Metadata */}

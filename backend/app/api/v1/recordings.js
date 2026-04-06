@@ -46,6 +46,7 @@ router.post('/recordings', async (req, res) => {
 
     // 1. Find or create order using tenant_id + package_code
     let order_id;
+    let recording_type = 'PACKAGED';
     const orderResult = await prisma.order.findFirst({
       where: { tenantId: tenant_id, packageCode: package_code },
       select: { id: true }
@@ -68,6 +69,7 @@ router.post('/recordings', async (req, res) => {
       order_id = newOrderResult.id;
     } else {
       order_id = orderResult.id;
+      recording_type = 'RETURNED';
     }
 
     // 2. Insert into recordings
@@ -87,6 +89,7 @@ router.post('/recordings', async (req, res) => {
         startedAt: started_at ? new Date(started_at) : new Date(),
         endedAt: ended_at ? new Date(ended_at) : new Date(),
         status: 'completed',
+        type: recording_type,
       },
       select: { id: true }
     });
