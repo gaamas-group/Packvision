@@ -89,7 +89,7 @@ router.post('/recordings', async (req, res) => {
         userId: user_id,
         bucket: bucket || process.env.AWS_S3_BUCKET_NAME || 'test-bucket',
         objectKey: object_key,
-        fileSize: file_size,
+        fileSize: file_size != null ? BigInt(file_size) : null,
         durationSeconds: duration,
         startedAt: started_at ? new Date(started_at) : new Date(),
         endedAt: ended_at ? new Date(ended_at) : new Date(),
